@@ -301,7 +301,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v24 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v25 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -795,10 +795,26 @@ async function enterReal(user){
   let prof=null;
   try{const {data}=await sb.from('profiles').select('*').eq('id',user.id).single();prof=data;}catch(e){console.error('프로필 로딩 실패',e);}
   const u={id:user.id,email:user.email,name:(prof&&prof.name)||user.email,role:(prof&&prof.role)||'student',sid:(prof&&prof.student_id)||null,real:true};
-  await Promise.all([loadBoard(),loadShifts(),loadTemplates()]);  // Supabase에서 불러오기
+  await Promise.all([loadBoard(),loadShifts(),loadTemplates(),loadStudents()]);  // Supabase에서 불러오기
   enter(u);
   subscribeRealtime();        // 실시간 변경 구독
 }
+async function loadStudents(){
+  if(!sb)return;
+  try{
+    const [st,gr,cl]=await Promise.all([
+      sb.from('students').select('*').order('id'),
+      sb.from('grades').select('*'),
+      sb.from('counsel_log').select('*')
+    ]);
+    if(st.data){
+      DB.students=st.data.map(r=>({id:r.id,name:r.name,phone:r.phone||'',parent:r.parent_phone||'',school:r.school||'',grade:r.grade||'',gender:r.gender||'m',birth:r.birth||'',address:r.address||'',emergency:r.emergency||'',note:r.note||'',tuition:r.tuition||0,payDay:r.pay_day||5,mealFee:0,lastCounsel:r.last_counsel||null,counselDue:r.counsel_due||todayStr(),counselHist:[],grades:[]}));
+      if(gr.data)gr.data.forEach(g=>{const s=DB.students.find(x=>x.id===g.student_id);if(s)s.grades.push({date:g.date,exam:g.exam,subject:g.subject,score:g.score})});
+      if(cl.data)cl.data.forEach(c=>{const s=DB.students.find(x=>x.id===c.student_id);if(s)s.counselHist.push(c.date)});
+    }
+  }catch(e){console.error('원생 로딩 실패',e);}
+}
+async function refreshStudents(){await loadStudents();renderAll();}
 /* ===== Supabase 데이터 로딩 ===== */
 async function loadBoard(){
   if(!sb)return;
@@ -829,6 +845,9 @@ function subscribeRealtime(){
       .on('postgres_changes',{event:'*',schema:'public',table:'notices'},refreshBoard)
       .on('postgres_changes',{event:'*',schema:'public',table:'annual'},refreshBoard)
       .on('postgres_changes',{event:'*',schema:'public',table:'shifts'},refreshSched)
+      .on('postgres_changes',{event:'*',schema:'public',table:'students'},refreshStudents)
+      .on('postgres_changes',{event:'*',schema:'public',table:'grades'},refreshStudents)
+      .on('postgres_changes',{event:'*',schema:'public',table:'counsel_log'},refreshStudents)
       .subscribe();
   }catch(e){console.error('실시간 구독 실패',e);}
 }
@@ -1126,10 +1145,20 @@ function renderParentHome(){
 
 /* ============ ACTIONS ============ */
 function mark(sid,type){DB.attend.push({sid,type,date:todayStr(),time:nowTime()});save();notifyParent(sid,type);renderAll()}
-function counselDone(sid){const s=studentById(sid);const t=todayStr();s.lastCounsel=t;s.counselDue=addDays(t,7);(s.counselHist=s.counselHist||[]).push(t);save();renderAll();toast('✅ 상담 완료',`${s.name} 학생 상담 기록 완료. 다음 예정: ${s.counselDue}`,'var(--in)')}
-function counselDefer(sid){const s=studentById(sid);s.counselDue=addDays(todayStr(),1);save();renderAll();toast('⏭ 내일로 연기',`${s.name} 학생을 내일 목록으로 넘겼습니다.`,'var(--out)')}
+async function counselDone(sid){const s=studentById(sid);const t=todayStr();const due=addDays(t,7);
+  if(sb&&me&&me.real){const {error}=await sb.from('students').update({last_counsel:t,counsel_due:due}).eq('id',sid);if(error){toast('❌ 실패',error.message,'var(--warn)');return}await sb.from('counsel_log').insert({student_id:sid,date:t});await loadStudents();}
+  else{s.lastCounsel=t;s.counselDue=due;(s.counselHist=s.counselHist||[]).push(t);save();}
+  renderAll();toast('✅ 상담 완료',`${s.name} 학생 상담 기록 완료. 다음 예정: ${due}`,'var(--in)')}
+async function counselDefer(sid){const s=studentById(sid);const due=addDays(todayStr(),1);
+  if(sb&&me&&me.real){const {error}=await sb.from('students').update({counsel_due:due}).eq('id',sid);if(error){toast('❌ 실패',error.message,'var(--warn)');return}await loadStudents();}
+  else{s.counselDue=due;save();}
+  renderAll();toast('⏭ 내일로 연기',`${s.name} 학생을 내일 목록으로 넘겼습니다.`,'var(--out)')}
 function changeRole(uid,role){const u=DB.users.find(x=>x.id===uid);u.role=role;save();renderUsers();toast('🔑 등급 변경',`${u.name} → ${ROLE_LABEL[role]}(으)로 변경했습니다.`,'var(--gold)')}
-function addStudent(){const name=val('f-name'),phone=val('f-phone');if(!name||!phone){toast('⚠️ 입력 필요','이름과 학생 휴대폰은 필수입니다.','var(--warn)');return}DB.students.push({id:DB.nextSid++,name,phone,parent:val('f-parent'),school:val('f-school'),grade:val('f-grade'),tuition:parseInt(val('f-tuition'))||450000,payDay:parseInt(val('f-payday'))||5,mealFee:0,note:val('f-note'),lastCounsel:null,counselDue:todayStr(),counselHist:[]});save();['f-name','f-phone','f-parent','f-school','f-tuition','f-payday','f-note'].forEach(i=>document.getElementById(i).value='');toast('🎉 원생 등록',`${name} 학생이 등록되었습니다.`,'var(--brand)');renderAll()}
+async function addStudent(){const name=val('f-name'),phone=val('f-phone');if(!name||!phone){toast('⚠️ 입력 필요','이름과 학생 휴대폰은 필수입니다.','var(--warn)');return}
+  const tuition=parseInt(val('f-tuition'))||450000,payDay=parseInt(val('f-payday'))||5;
+  if(sb&&me&&me.real){const {error}=await sb.from('students').insert({name,phone,parent_phone:val('f-parent'),school:val('f-school'),grade:val('f-grade'),tuition,pay_day:payDay,note:val('f-note'),counsel_due:todayStr()});if(error){toast('❌ 등록 실패',error.message,'var(--warn)');return}await loadStudents();}
+  else{DB.students.push({id:DB.nextSid++,name,phone,parent:val('f-parent'),school:val('f-school'),grade:val('f-grade'),tuition,payDay,mealFee:0,note:val('f-note'),lastCounsel:null,counselDue:todayStr(),counselHist:[],grades:[]});save();}
+  ['f-name','f-phone','f-parent','f-school','f-tuition','f-payday','f-note'].forEach(i=>document.getElementById(i).value='');toast('🎉 원생 등록',`${name} 학생이 등록되었습니다.`,'var(--brand)');renderAll()}
 function toggleMeal(kind){const s=studentById(me.sid);if(!s)return;
   if(pastMealDeadline(kind)){toast('⏰ 신청 마감',`${kind==='lunch'?'점심':'저녁'} 급식 신청은 ${MEAL_DEADLINE_LABEL[kind]}까지입니다. (현재 ${nowTime()})`,'var(--warn)');renderMealApply();return}
   let m=mealOf(s.id,todayStr());if(!m){m={sid:s.id,date:todayStr(),lunch:false,dinner:false};DB.meals.push(m)}m[kind]=!m[kind];save();renderMealApply();const on=m[kind];toast(on?'🍽 급식 신청':'❎ 신청 취소',`${kind==='lunch'?'점심':'저녁'} 급식을 ${on?'신청':'취소'}했습니다.`,'var(--meal)')}
@@ -1195,7 +1224,10 @@ function openStudent(sid){mdSid=sid;const s=studentById(sid);document.getElement
   document.getElementById('modal').classList.add('show');
 }
 function renderGrades(){const s=studentById(mdSid);const g=(s.grades||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));document.getElementById('md-grades').innerHTML=g.length?g.map(x=>`<div class="mini"><span>${x.exam} · ${x.subject}</span><span><b>${x.score}</b>점 <span style="color:var(--faint)">${x.date}</span></span></div>`).join(''):'<div class="empty">성적 기록 없음</div>'}
-function addGrade(){const s=studentById(mdSid);const exam=document.getElementById('g-exam').value.trim(),subj=document.getElementById('g-subj').value.trim(),score=document.getElementById('g-score').value.trim();if(!exam||!subj||score===''){toast('⚠️ 입력 필요','시험명·과목·점수를 입력하세요.','var(--warn)');return}(s.grades=s.grades||[]).push({date:todayStr(),exam,subject:subj,score:Number(score)});save();renderGrades();['g-exam','g-subj','g-score'].forEach(i=>document.getElementById(i).value='');toast('📊 성적 등록',`${s.name} · ${exam} ${subj} ${score}점`,'var(--brand)')}
+async function addGrade(){const s=studentById(mdSid);const exam=document.getElementById('g-exam').value.trim(),subj=document.getElementById('g-subj').value.trim(),score=document.getElementById('g-score').value.trim();if(!exam||!subj||score===''){toast('⚠️ 입력 필요','시험명·과목·점수를 입력하세요.','var(--warn)');return}
+  if(sb&&me&&me.real){const {error}=await sb.from('grades').insert({student_id:mdSid,date:todayStr(),exam,subject:subj,score:Number(score)});if(error){toast('❌ 실패',error.message,'var(--warn)');return}await loadStudents();}
+  else{(s.grades=s.grades||[]).push({date:todayStr(),exam,subject:subj,score:Number(score)});save();}
+  renderGrades();['g-exam','g-subj','g-score'].forEach(i=>document.getElementById(i).value='');toast('📊 성적 등록',`${s.name} · ${exam} ${subj} ${score}점`,'var(--brand)')}
 let calState={sid:null,y:2026,m:0};
 function calMove(n){calState.m+=n;if(calState.m<0){calState.m=11;calState.y--}if(calState.m>11){calState.m=0;calState.y++}renderCal()}
 function renderCal(){
