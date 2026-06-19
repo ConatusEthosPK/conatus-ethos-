@@ -301,7 +301,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v27 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v28 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -716,24 +716,7 @@ if(!store.getItem('ce_extra_v1')){
 }
 // 좌석배치도 (구역별 · 화살표 도입 전 버전 + 성별 띠)
 if(!store.getItem('ce_seats_orig2')){
-  const pool=['강도연','권찬미','김경민','김남우','김상현','김수빈','김연우','김유리','김윤서','박하연','신도윤','안성현','이규진','정경민','조준범','홍도연','문도진','장영서','임수현','김도연','서린희','이한솔','정아람','진예린','노유림','황윤서','채민주','권유리','송근후','정서희','하예린','박정현','이재율','김태윤','한정연'];
-  const grds=['N수','N수','N수','고3','N수','N수','고3','N수','N수','고2','N수','N수','고3','N수','N수'];
-  const dg=['m','f','m','f']; // demo 성별
-  let pi=0;const pick=()=>pool[(pi++)%pool.length];const gr=i=>grds[i%grds.length];const sx=i=>(i%2===0?'f':'m');
-  const demo=DB.students.slice(0,4);let seats=[];
-  for(let i=1;i<=48;i++){let name='',grade='',sid=null,present=null,gender=sx(i);
-    if(i<=4){const s=demo[i-1];name=s.name;grade=s.grade;sid=s.id;present=true;gender=dg[i-1];}
-    else if(i%9===0){/* 빈자리 */}
-    else{name=pick();grade=gr(i);present=(i%6!==0);}
-    seats.push({id:'A'+i,label:String(i),zone:'1관 일반석',kan:'1관',name,grade,gender,sid,bookable:false,present,flag:null});}
-  const mkZone=(prefix,zone,n,kan,booked)=>{for(let i=1;i<=n;i++){const has=booked&&i<=booked;seats.push({id:prefix+i,label:prefix+'-'+i,zone,kan,name:has?pick():'',grade:has?'N수':'',gender:sx(i),sid:null,bookable:true,present:has?true:null,flag:null});}};
-  mkZone('ST','스탠딩석',4,'1관',1);
-  mkZone('LZ','1관 라운지',5,'1관',2);
-  mkZone('BED','침대',3,'1관',1);
-  mkZone('BTH','비대면 부스',3,'1관',1);
-  for(let i=1;i<=12;i++){let name='',grade='',present=null;if(i%5!==0){name=pick();grade=gr(i+3);present=(i%4!==0);}seats.push({id:'B'+i,label:'2-'+i,zone:'2관 일반석',kan:'2관',name,grade,gender:sx(i),sid:null,bookable:false,present,flag:null});}
-  mkZone('2C','2관 공용좌석',6,'2관',2);
-  DB.seats=seats;store.setItem('ce_seats_orig2','1');
+  DB.seats=genSeatsLayout();store.setItem('ce_seats_orig2','1');
 }
 // 공지 / 연간일정 / 조교 출근표
 if(!DB.notices){DB.notices=[
@@ -795,10 +778,41 @@ async function enterReal(user){
   let prof=null;
   try{const {data}=await sb.from('profiles').select('*').eq('id',user.id).single();prof=data;}catch(e){console.error('프로필 로딩 실패',e);}
   const u={id:user.id,email:user.email,name:(prof&&prof.name)||user.email,role:(prof&&prof.role)||'student',sid:(prof&&prof.student_id)||null,real:true};
-  await Promise.all([loadBoard(),loadShifts(),loadTemplates(),loadStudents(),loadAttendance(),loadMeals(),loadUsers()]);  // Supabase에서 불러오기
+  await Promise.all([loadBoard(),loadShifts(),loadTemplates(),loadStudents(),loadAttendance(),loadMeals(),loadUsers()]);
+  await loadSeats();          // 좌석은 학생 로딩 이후
   enter(u);
   subscribeRealtime();        // 실시간 변경 구독
 }
+function genSeatsLayout(){
+  const pool=['강도연','권찬미','김경민','김남우','김상현','김수빈','김연우','김유리','김윤서','박하연','신도윤','안성현','이규진','정경민','조준범','홍도연','문도진','장영서','임수현','김도연','서린희','이한솔','정아람','진예린','노유림','황윤서','채민주','권유리','송근후','정서희','하예린','박정현','이재율','김태윤','한정연'];
+  const grds=['N수','N수','N수','고3','N수','N수','고3','N수','N수','고2','N수','N수','고3','N수','N수'];
+  const dg=['m','f','m','f'];
+  let pi=0;const pick=()=>pool[(pi++)%pool.length];const gr=i=>grds[i%grds.length];const sx=i=>(i%2===0?'f':'m');
+  const demo=DB.students.slice(0,4);let seats=[];
+  for(let i=1;i<=48;i++){let name='',grade='',sid=null,present=null,gender=sx(i);
+    if(i<=4&&demo[i-1]){const s=demo[i-1];name=s.name;grade=s.grade;sid=s.id;present=true;gender=dg[i-1];}
+    else if(i%9===0){}
+    else{name=pick();grade=gr(i);present=(i%6!==0);}
+    seats.push({id:'A'+i,label:String(i),zone:'1관 일반석',kan:'1관',name,grade,gender,sid,bookable:false,present,flag:null});}
+  const mkZone=(prefix,zone,n,kan,booked)=>{for(let i=1;i<=n;i++){const has=booked&&i<=booked;seats.push({id:prefix+i,label:prefix+'-'+i,zone,kan,name:has?pick():'',grade:has?'N수':'',gender:sx(i),sid:null,bookable:true,present:has?true:null,flag:null});}};
+  mkZone('ST','스탠딩석',4,'1관',1);mkZone('LZ','1관 라운지',5,'1관',2);mkZone('BED','침대',3,'1관',1);mkZone('BTH','비대면 부스',3,'1관',1);
+  for(let i=1;i<=12;i++){let name='',grade='',present=null;if(i%5!==0){name=pick();grade=gr(i+3);present=(i%4!==0);}seats.push({id:'B'+i,label:'2-'+i,zone:'2관 일반석',kan:'2관',name,grade,gender:sx(i),sid:null,bookable:false,present,flag:null});}
+  mkZone('2C','2관 공용좌석',6,'2관',2);
+  return seats;
+}
+async function loadSeats(){
+  if(!sb)return;
+  try{
+    let res=await sb.from('seats').select('*');let data=res.data;
+    if((!data||data.length===0)&&me&&me.real&&(me.role==='master'||me.role==='director'||me.role==='counter')){
+      const rows=genSeatsLayout().map(s=>({id:s.id,label:s.label,zone:s.zone,kan:s.kan,occupant_name:s.name||null,student_id:s.sid||null,grade:s.grade||null,gender:s.gender||null,bookable:!!s.bookable,present:s.present,flag:s.flag||null}));
+      await sb.from('seats').insert(rows);
+      res=await sb.from('seats').select('*');data=res.data;
+    }
+    if(data)DB.seats=data.map(s=>({id:s.id,label:s.label,zone:s.zone,kan:s.kan,name:s.occupant_name||'',grade:s.grade||'',gender:s.gender||'m',sid:s.student_id,bookable:!!s.bookable,present:s.present,flag:s.flag}));
+  }catch(e){console.error('좌석 로딩 실패',e);}
+}
+async function refreshSeats(){await loadSeats();if(activePanel==='seats')renderSeats();}
 async function loadUsers(){
   if(!sb)return;
   try{const {data}=await sb.from('profiles').select('*');if(data)DB.users=data.map(p=>({id:p.id,name:p.name||p.email,email:p.email,role:p.role,sid:p.student_id}));}catch(e){console.error('사용자 로딩 실패',e);}
@@ -866,6 +880,7 @@ function subscribeRealtime(){
       .on('postgres_changes',{event:'*',schema:'public',table:'attendance'},refreshAttend)
       .on('postgres_changes',{event:'*',schema:'public',table:'meals'},refreshMeals)
       .on('postgres_changes',{event:'*',schema:'public',table:'profiles'},refreshUsers)
+      .on('postgres_changes',{event:'*',schema:'public',table:'seats'},refreshSeats)
       .subscribe();
   }catch(e){console.error('실시간 구독 실패',e);}
 }
@@ -939,7 +954,10 @@ function renderSeats(){
     return `<div class="seat-zone"><h3>${z} <span class="zcount">${occ}/${list.length}명</span></h3><div class="seat-row">${list.map(seatChip).join('')}</div></div>`;
   }).join('');
 }
-function bookSeat(id){const s=DB.seats.find(x=>x.id===id);if(!s)return;const nm=(prompt(s.zone+' '+s.label+' 좌석 배정 — 학생 이름 입력:','')||'').trim();if(!nm)return;const g=(prompt('성별 (남/여):','남')||'').trim();s.name=nm;s.gender=(g.indexOf('여')>=0)?'f':'m';if(!s.grade)s.grade='N수';s.present=true;save();renderSeats();toast('🪑 좌석 배정',`${s.label} → ${nm}`,'var(--brand)');}
+async function bookSeat(id){const s=DB.seats.find(x=>x.id===id);if(!s)return;const nm=(prompt(s.zone+' '+s.label+' 좌석 배정 — 학생 이름 입력:','')||'').trim();if(!nm)return;const g=(prompt('성별 (남/여):','남')||'').trim();const gender=(g.indexOf('여')>=0)?'f':'m';
+  if(sb&&me&&me.real){const {error}=await sb.from('seats').update({occupant_name:nm,gender,grade:s.grade||'N수',present:true}).eq('id',id);if(error){toast('❌ 실패',error.message,'var(--warn)');return}await loadSeats();}
+  else{s.name=nm;s.gender=gender;if(!s.grade)s.grade='N수';s.present=true;save();}
+  renderSeats();toast('🪑 좌석 배정',`${s.label} → ${nm}`,'var(--brand)');}
 let seatPopupId=null;
 function openSeatPopup(id){const s=DB.seats.find(x=>x.id===id);if(!s||!s.name)return;seatPopupId=id;
   document.getElementById('sm-name').textContent=s.name;
@@ -947,10 +965,15 @@ function openSeatPopup(id){const s=DB.seats.find(x=>x.id===id);if(!s||!s.name)re
   document.getElementById('sm-state').textContent='현재 상태: '+(s.present?('재석 · '+(s.flag||'정상')):'공석');
   document.getElementById('seatModal').classList.add('show');
 }
-function setPresence(p){const s=DB.seats.find(x=>x.id===seatPopupId);if(!s)return;s.present=p;if(!p)s.flag=null;save();renderSeats();openSeatPopup(seatPopupId)}
-function setFlag(f){const s=DB.seats.find(x=>x.id===seatPopupId);if(!s)return;s.present=true;s.flag=(f==='정상')?null:f;save();renderSeats();openSeatPopup(seatPopupId);const lbl={정상:'정상',졸음:'졸음',딴짓:'딴짓'}[f];toast('🚶 순찰 체크',`${s.name} → ${lbl}`,f==='딴짓'?'var(--warn)':f==='졸음'?'var(--out)':'var(--in)')}
+async function setPresence(p){const s=DB.seats.find(x=>x.id===seatPopupId);if(!s)return;const flag=p?s.flag:null;
+  if(sb&&me&&me.real){const {error}=await sb.from('seats').update({present:p,flag}).eq('id',seatPopupId);if(error){toast('❌ 실패',error.message,'var(--warn)');return}await loadSeats();}
+  else{s.present=p;if(!p)s.flag=null;save();}
+  renderSeats();openSeatPopup(seatPopupId)}
+async function setFlag(f){const s=DB.seats.find(x=>x.id===seatPopupId);if(!s)return;const flag=(f==='정상')?null:f;const nm=s.name;
+  if(sb&&me&&me.real){const {error}=await sb.from('seats').update({present:true,flag}).eq('id',seatPopupId);if(error){toast('❌ 실패',error.message,'var(--warn)');return}await loadSeats();}
+  else{s.present=true;s.flag=flag;save();}
+  renderSeats();openSeatPopup(seatPopupId);const lbl={정상:'정상',졸음:'졸음',딴짓:'딴짓'}[f];toast('🚶 순찰 체크',`${nm} → ${lbl}`,f==='딴짓'?'var(--warn)':f==='졸음'?'var(--out)':'var(--in)')}
 function closeSeatModal(){document.getElementById('seatModal').classList.remove('show')}
-function bookSeat(id){const s=DB.seats.find(x=>x.id===id);if(!s)return;const nm=(prompt(s.zone+' '+s.label+' 좌석 배정 — 학생 이름 입력 (비우려면 그대로 확인):','')||'').trim();if(!nm)return;s.name=nm;if(!s.grade)s.grade='N수';s.present=true;save();renderSeats();toast('🪑 좌석 배정',`${s.label} → ${nm}`,'var(--brand)');}
 function renderDashboard(){const t=todayStr();document.getElementById('today-str').textContent=new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'});const sts=DB.students.map(s=>status(s.id));document.getElementById('d-total').textContent=DB.students.length;document.getElementById('d-in').textContent=sts.filter(x=>x==='in').length;document.getElementById('d-due').textContent=DB.students.filter(s=>s.counselDue<=t).length;document.getElementById('d-meal').textContent=DB.meals.filter(m=>m.date===t&&(m.lunch||m.dinner)).length;document.getElementById('d-attend').innerHTML=DB.students.map(s=>`<tr><td><b>${s.name}</b></td><td><span class="gradetag">${s.grade||'—'}</span></td><td>${statusPill(status(s.id))}</td><td>${timeOf(s.id,'IN')}</td><td>${timeOf(s.id,'OUT')}</td></tr>`).join('')}
 let stFilter='all';
 const selectedSids=new Set();
