@@ -301,7 +301,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v23 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v24 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -795,11 +795,11 @@ async function enterReal(user){
   let prof=null;
   try{const {data}=await sb.from('profiles').select('*').eq('id',user.id).single();prof=data;}catch(e){console.error('프로필 로딩 실패',e);}
   const u={id:user.id,email:user.email,name:(prof&&prof.name)||user.email,role:(prof&&prof.role)||'student',sid:(prof&&prof.student_id)||null,real:true};
-  await loadBoard();          // 공지·일정을 Supabase에서 불러오기
+  await Promise.all([loadBoard(),loadShifts(),loadTemplates()]);  // Supabase에서 불러오기
   enter(u);
   subscribeRealtime();        // 실시간 변경 구독
 }
-/* ===== Supabase 데이터: 공지·연간일정 ===== */
+/* ===== Supabase 데이터 로딩 ===== */
 async function loadBoard(){
   if(!sb)return;
   try{
@@ -811,14 +811,24 @@ async function loadBoard(){
     if(an.data)DB.annual=an.data.map(a=>({id:a.id,date:a.date,title:a.title}));
   }catch(e){console.error('공지/일정 로딩 실패',e);}
 }
+async function loadShifts(){
+  if(!sb)return;
+  try{const {data}=await sb.from('shifts').select('*');if(data)DB.shifts=data.map(s=>({id:s.id,day:s.day,teacher:s.teacher,start:s.start_h,end:s.end_h}));}catch(e){console.error('출근표 로딩 실패',e);}
+}
+async function loadTemplates(){
+  if(!sb)return;
+  try{const {data}=await sb.from('settings').select('value').eq('key','templates').maybeSingle();if(data&&data.value)Object.assign(DB.templates,data.value);}catch(e){}
+}
 async function refreshBoard(){await loadBoard();if(activePanel==='board')renderBoard();}
+async function refreshSched(){await loadShifts();if(activePanel==='staffsched')renderStaffSched();}
 let _rtOn=false;
 function subscribeRealtime(){
   if(!sb||_rtOn)return;_rtOn=true;
   try{
-    sb.channel('rt-board')
+    sb.channel('rt-main')
       .on('postgres_changes',{event:'*',schema:'public',table:'notices'},refreshBoard)
       .on('postgres_changes',{event:'*',schema:'public',table:'annual'},refreshBoard)
+      .on('postgres_changes',{event:'*',schema:'public',table:'shifts'},refreshSched)
       .subscribe();
   }catch(e){console.error('실시간 구독 실패',e);}
 }
@@ -999,21 +1009,34 @@ function renderStaffSched(){
   document.getElementById('sched-edit-hint').textContent=canEdit?'(원장·카운터·마스터가 빈칸을 눌러 추가, 블록을 눌러 수정/삭제)':'';
   const days=['월','화','수','목','금','토'],H0=9,H1=22;
   const grid={};days.forEach(d=>grid[d]={});
-  DB.shifts.forEach((s,idx)=>{if(days.indexOf(s.day)<0)return;grid[s.day][s.start]={span:Math.max(1,s.end-s.start),teacher:s.teacher,idx};for(let h=s.start+1;h<s.end;h++)grid[s.day][h]='cov';});
+  DB.shifts.forEach((s)=>{if(days.indexOf(s.day)<0)return;grid[s.day][s.start]={span:Math.max(1,s.end-s.start),teacher:s.teacher,id:s.id};for(let h=s.start+1;h<s.end;h++)grid[s.day][h]='cov';});
   let rows='';
   for(let h=H0;h<=H1;h++){
     rows+=`<tr><td class="hrcell">${h}시</td>`;
     days.forEach(d=>{const c=grid[d][h];
       if(c==='cov')return;
-      if(c&&c.teacher){rows+=`<td class="shiftcell" rowspan="${c.span}" style="background:${teacherColor(c.teacher)}" ${canEdit?`onclick="editShift(${c.idx})"`:''}>${c.teacher} 선생님</td>`;}
+      if(c&&c.teacher){rows+=`<td class="shiftcell" rowspan="${c.span}" style="background:${teacherColor(c.teacher)}" ${canEdit?`onclick="editShift('${c.id}')"`:''}>${c.teacher} 선생님</td>`;}
       else rows+=`<td class="emptycell" ${canEdit?`onclick="addShift('${d}',${h})"`:''}></td>`;
     });
     rows+='</tr>';
   }
   document.getElementById('sched-body').innerHTML=rows;
 }
-function addShift(day,hour){const name=(prompt(`${day}요일 ${hour}시부터 근무할 조교 이름:`,'')||'').trim();if(!name)return;const es=prompt('종료 시각(시) 입력 — 예: '+(hour+3),String(Math.min(hour+3,23)));if(es===null)return;let end=parseInt(es);if(!end||end<=hour){toast('⚠️ 시간 오류','종료 시각이 시작보다 커야 합니다.','var(--warn)');return}if(end>23)end=23;DB.shifts.push({day,teacher:name,start:hour,end});save();renderStaffSched();toast('🗓 근무 추가',`${day} ${hour}–${end}시 ${name} 선생님`,'var(--brand)')}
-function editShift(idx){const s=DB.shifts[idx];if(!s)return;const v=prompt(`${s.day}요일 ${s.start}–${s.end}시 — 이름 수정 (비우면 삭제):`,s.teacher);if(v===null)return;if(!v.trim()){DB.shifts.splice(idx,1);toast('🗑 삭제','근무를 삭제했습니다.','var(--out)')}else{s.teacher=v.trim();toast('🗓 수정','근무를 수정했습니다.','var(--brand)')}save();renderStaffSched()}
+async function addShift(day,hour){const name=(prompt(`${day}요일 ${hour}시부터 근무할 조교 이름:`,'')||'').trim();if(!name)return;const es=prompt('종료 시각(시) 입력 — 예: '+(hour+3),String(Math.min(hour+3,23)));if(es===null)return;let end=parseInt(es);if(!end||end<=hour){toast('⚠️ 시간 오류','종료 시각이 시작보다 커야 합니다.','var(--warn)');return}if(end>23)end=23;
+  if(sb&&me&&me.real){const {error}=await sb.from('shifts').insert({day,teacher:name,start_h:hour,end_h:end});if(error){toast('❌ 저장 실패',error.message,'var(--warn)');return}await loadShifts();}
+  else{DB.shifts.push({id:Date.now(),day,teacher:name,start:hour,end});save();}
+  renderStaffSched();toast('🗓 근무 추가',`${day} ${hour}–${end}시 ${name} 선생님`,'var(--brand)')}
+async function editShift(id){if(typeof id==='string'&&/^\d+$/.test(id))id=Number(id);const s=DB.shifts.find(x=>String(x.id)===String(id));if(!s)return;const v=prompt(`${s.day}요일 ${s.start}–${s.end}시 — 이름 수정 (비우면 삭제):`,s.teacher);if(v===null)return;
+  if(!v.trim()){
+    if(sb&&me&&me.real){const {error}=await sb.from('shifts').delete().eq('id',id);if(error){toast('❌ 삭제 실패',error.message,'var(--warn)');return}await loadShifts();}
+    else{DB.shifts=DB.shifts.filter(x=>String(x.id)!==String(id));save();}
+    toast('🗑 삭제','근무를 삭제했습니다.','var(--out)');
+  }else{
+    if(sb&&me&&me.real){const {error}=await sb.from('shifts').update({teacher:v.trim()}).eq('id',id);if(error){toast('❌ 수정 실패',error.message,'var(--warn)');return}await loadShifts();}
+    else{s.teacher=v.trim();save();}
+    toast('🗓 수정','근무를 수정했습니다.','var(--brand)');
+  }
+  renderStaffSched()}
 function showNoticePopup(){const p=DB.notices.filter(n=>n.pinned).sort((a,b)=>b.date.localeCompare(a.date));if(!p.length)return;const n=p[0];document.getElementById('np-date').textContent=n.date;document.getElementById('np-title').textContent=n.title;document.getElementById('np-body').textContent=n.body;document.getElementById('noticeModal').classList.add('show')}
 function closeNotice(){document.getElementById('noticeModal').classList.remove('show')}
 
@@ -1114,8 +1137,11 @@ function notifyParent(sid,type){const s=studentById(sid);const tpl=type==='IN'?D
 
 /* ===== templates settings ===== */
 function renderTemplates(){['attendIn','attendOut','tuition','meal'].forEach(k=>{document.getElementById('t-'+k).value=DB.templates[k]||''})}
-function saveTemplates(){['attendIn','attendOut','tuition','meal'].forEach(k=>{DB.templates[k]=document.getElementById('t-'+k).value});save();toast('💾 저장 완료','기본 메시지 양식을 저장했습니다.','var(--brand)')}
-function resetTemplates(){store.removeItem('ce_tpl_done');DB.templates={attendIn:'[이름]님이 [시간]에 등원 하였습니다.',attendOut:'[이름]님이 [시간]에 하원 하였습니다.',tuition:'[학원비 미납]PK대치 독학재수 학원입니다.\n[이름] 학생 학원비가 미납되어 연락드립니다.\n\n[이름] 학생 학원비는 [학원비]원으로 납부일은 [납부월]월 [수납일]일입니다.\n\n결제는 카드,시루,계좌이체 모두 가능합니다.\n*계좌이체시 입금자명은 학생 이름으로 변경하여, \n국민 285301-00-109125 [PK대치스파르타]로 입금 부탁드립니다.\n*계좌나 시루결제시 입금자명이 학생과 다르거나\n이미 입금하신 경우, 해당번호로 (입금일자/입금자명/입금금액/계좌OR시루) 문자 회신 부탁드립니다.\n\n감사합니다.',meal:'[급식비] PK대치 독학재수 학원입니다.\n[이름] 학생 [급식월]월 [반기]반기 급식비는 [급식비]원입니다.(계좌이체만 가능)\n\n입금자명은 학생이름으로 변경 후,\n카카오뱅크 3333-26-5065183 [김나영]으로 입금 부탁드립니다.\n\n감사합니다.'};save();renderTemplates();toast('↩️ 복원','초기 양식으로 되돌렸습니다.','var(--out)')}
+async function saveTemplates(){['attendIn','attendOut','tuition','meal'].forEach(k=>{DB.templates[k]=document.getElementById('t-'+k).value});
+  if(sb&&me&&me.real){const {error}=await sb.from('settings').upsert({key:'templates',value:DB.templates});if(error){toast('❌ 저장 실패',error.message,'var(--warn)');return}}
+  else{save();}
+  toast('💾 저장 완료','기본 메시지 양식을 저장했습니다.','var(--brand)')}
+async function resetTemplates(){store.removeItem('ce_tpl_done');DB.templates={attendIn:'[이름]님이 [시간]에 등원 하였습니다.',attendOut:'[이름]님이 [시간]에 하원 하였습니다.',tuition:'[학원비 미납]PK대치 독학재수 학원입니다.\n[이름] 학생 학원비가 미납되어 연락드립니다.\n\n[이름] 학생 학원비는 [학원비]원으로 납부일은 [납부월]월 [수납일]일입니다.\n\n결제는 카드,시루,계좌이체 모두 가능합니다.\n*계좌이체시 입금자명은 학생 이름으로 변경하여, \n국민 285301-00-109125 [PK대치스파르타]로 입금 부탁드립니다.\n*계좌나 시루결제시 입금자명이 학생과 다르거나\n이미 입금하신 경우, 해당번호로 (입금일자/입금자명/입금금액/계좌OR시루) 문자 회신 부탁드립니다.\n\n감사합니다.',meal:'[급식비] PK대치 독학재수 학원입니다.\n[이름] 학생 [급식월]월 [반기]반기 급식비는 [급식비]원입니다.(계좌이체만 가능)\n\n입금자명은 학생이름으로 변경 후,\n카카오뱅크 3333-26-5065183 [김나영]으로 입금 부탁드립니다.\n\n감사합니다.'};if(sb&&me&&me.real){await sb.from('settings').upsert({key:'templates',value:DB.templates});}else{save();}renderTemplates();toast('↩️ 복원','초기 양식으로 되돌렸습니다.','var(--out)')}
 
 /* ============ STUDENT DETAIL MODAL ============ */
 let mdSid=null;
