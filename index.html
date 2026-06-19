@@ -301,7 +301,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v22 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v23 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -795,7 +795,32 @@ async function enterReal(user){
   let prof=null;
   try{const {data}=await sb.from('profiles').select('*').eq('id',user.id).single();prof=data;}catch(e){console.error('프로필 로딩 실패',e);}
   const u={id:user.id,email:user.email,name:(prof&&prof.name)||user.email,role:(prof&&prof.role)||'student',sid:(prof&&prof.student_id)||null,real:true};
+  await loadBoard();          // 공지·일정을 Supabase에서 불러오기
   enter(u);
+  subscribeRealtime();        // 실시간 변경 구독
+}
+/* ===== Supabase 데이터: 공지·연간일정 ===== */
+async function loadBoard(){
+  if(!sb)return;
+  try{
+    const [nt,an]=await Promise.all([
+      sb.from('notices').select('*').order('date',{ascending:false}),
+      sb.from('annual').select('*').order('date',{ascending:true})
+    ]);
+    if(nt.data)DB.notices=nt.data.map(n=>({id:n.id,date:n.date,title:n.title,body:n.body||'',pinned:!!n.pinned}));
+    if(an.data)DB.annual=an.data.map(a=>({id:a.id,date:a.date,title:a.title}));
+  }catch(e){console.error('공지/일정 로딩 실패',e);}
+}
+async function refreshBoard(){await loadBoard();if(activePanel==='board')renderBoard();}
+let _rtOn=false;
+function subscribeRealtime(){
+  if(!sb||_rtOn)return;_rtOn=true;
+  try{
+    sb.channel('rt-board')
+      .on('postgres_changes',{event:'*',schema:'public',table:'notices'},refreshBoard)
+      .on('postgres_changes',{event:'*',schema:'public',table:'annual'},refreshBoard)
+      .subscribe();
+  }catch(e){console.error('실시간 구독 실패',e);}
 }
 async function doLogin(){
   const email=val('l-email').toLowerCase(),pw=val('l-pw');const err=document.getElementById('l-err');err.textContent='';
@@ -939,15 +964,33 @@ function renderBoard(){
   const list=DB.notices.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(n=>`<div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div style="font-weight:700">${n.pinned?'📌 ':''}${n.title}</div><div style="font-size:11px;color:var(--faint);margin:3px 0 8px">${n.date}</div></div>${ed?`<div style="display:flex;gap:6px"><button class="btn sm" onclick="editNotice(${n.id})">수정</button><button class="btn sm ghost" onclick="delNotice(${n.id})">삭제</button></div>`:''}</div><div style="font-size:13px;color:var(--muted);line-height:1.55;white-space:pre-wrap">${n.body}</div></div>`).join('');
   document.getElementById('notice-list').innerHTML=add+(list||'<div class="empty">공지가 없습니다</div>');
   document.getElementById('annual-act-th').textContent=ed?'관리':'';
-  document.getElementById('annual-body').innerHTML=DB.annual.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(x=>{const i=DB.annual.indexOf(x);return `<tr><td style="color:var(--muted)">${x.date.slice(5).replace('-','/')}</td><td>${x.title}</td><td>${ed?`<button class="btn sm" onclick="editAnnual(${i})">수정</button> <button class="btn sm ghost" onclick="delAnnual(${i})">삭제</button>`:''}</td></tr>`}).join('');
+  document.getElementById('annual-body').innerHTML=DB.annual.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(x=>`<tr><td style="color:var(--muted)">${(x.date||'').slice(5).replace('-','/')}</td><td>${x.title}</td><td>${ed?`<button class="btn sm" onclick="editAnnual(${x.id})">수정</button> <button class="btn sm ghost" onclick="delAnnual(${x.id})">삭제</button>`:''}</td></tr>`).join('');
   document.getElementById('annual-form').innerHTML=ed?`<div class="card" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input class="in" id="an-date" placeholder="2026-07-01" style="max-width:150px"><input class="in" id="an-title" placeholder="일정 내용" style="flex:1;min-width:160px"><button class="btn primary sm" onclick="addAnnual()">일정 추가</button></div>`:'';
 }
-function addNotice(){const t=document.getElementById('nt-title').value.trim(),b=document.getElementById('nt-body').value.trim();if(!t){toast('⚠️ 제목 필요','공지 제목을 입력하세요.','var(--warn)');return}const pin=document.getElementById('nt-pin').checked;DB.notices.push({id:DB.nextNoticeId++,date:todayStr(),title:t,body:b,pinned:pin});save();renderBoard();toast('📢 공지 등록','공지가 등록되었습니다.','var(--brand)')}
-function editNotice(id){const n=DB.notices.find(x=>x.id===id);if(!n)return;const t=prompt('공지 제목:',n.title);if(t===null)return;const b=prompt('공지 내용:',n.body);if(b===null)return;n.title=t.trim()||n.title;n.body=b.trim();save();renderBoard();toast('✏️ 공지 수정','공지를 수정했습니다.','var(--brand)')}
-function delNotice(id){DB.notices=DB.notices.filter(n=>n.id!==id);save();renderBoard()}
-function addAnnual(){const d=document.getElementById('an-date').value.trim(),t=document.getElementById('an-title').value.trim();if(!d||!t){toast('⚠️ 입력 필요','날짜와 일정을 입력하세요.','var(--warn)');return}DB.annual.push({date:d,title:t});save();renderBoard();toast('🗓 일정 추가','연간 일정에 추가했습니다.','var(--brand)')}
-function editAnnual(i){const a=DB.annual[i];if(!a)return;const t=prompt('일정 내용:',a.title);if(t===null)return;const d=prompt('날짜 (YYYY-MM-DD):',a.date);if(d===null)return;a.title=t.trim()||a.title;a.date=d.trim()||a.date;save();renderBoard();toast('✏️ 일정 수정','일정을 수정했습니다.','var(--brand)')}
-function delAnnual(i){DB.annual.splice(i,1);save();renderBoard();toast('🗑 일정 삭제','일정을 삭제했습니다.','var(--out)')}
+async function addNotice(){const t=document.getElementById('nt-title').value.trim(),b=document.getElementById('nt-body').value.trim();if(!t){toast('⚠️ 제목 필요','공지 제목을 입력하세요.','var(--warn)');return}const pin=document.getElementById('nt-pin').checked;
+  if(sb&&me&&me.real){const {error}=await sb.from('notices').insert({title:t,body:b,pinned:pin});if(error){toast('❌ 저장 실패',error.message,'var(--warn)');return}await loadBoard();}
+  else{DB.notices.push({id:Date.now(),date:todayStr(),title:t,body:b,pinned:pin});save();}
+  renderBoard();toast('📢 공지 등록','공지가 등록되었습니다.','var(--brand)')}
+async function editNotice(id){const n=DB.notices.find(x=>x.id===id);if(!n)return;const t=prompt('공지 제목:',n.title);if(t===null)return;const b=prompt('공지 내용:',n.body);if(b===null)return;const nt=t.trim()||n.title,nb=b.trim();
+  if(sb&&me&&me.real){const {error}=await sb.from('notices').update({title:nt,body:nb}).eq('id',id);if(error){toast('❌ 수정 실패',error.message,'var(--warn)');return}await loadBoard();}
+  else{n.title=nt;n.body=nb;save();}
+  renderBoard();toast('✏️ 공지 수정','공지를 수정했습니다.','var(--brand)')}
+async function delNotice(id){
+  if(sb&&me&&me.real){const {error}=await sb.from('notices').delete().eq('id',id);if(error){toast('❌ 삭제 실패',error.message,'var(--warn)');return}await loadBoard();}
+  else{DB.notices=DB.notices.filter(n=>n.id!==id);save();}
+  renderBoard()}
+async function addAnnual(){const d=document.getElementById('an-date').value.trim(),t=document.getElementById('an-title').value.trim();if(!d||!t){toast('⚠️ 입력 필요','날짜와 일정을 입력하세요.','var(--warn)');return}
+  if(sb&&me&&me.real){const {error}=await sb.from('annual').insert({date:d,title:t});if(error){toast('❌ 저장 실패',error.message,'var(--warn)');return}await loadBoard();}
+  else{DB.annual.push({id:Date.now(),date:d,title:t});save();}
+  renderBoard();toast('🗓 일정 추가','연간 일정에 추가했습니다.','var(--brand)')}
+async function editAnnual(id){const a=DB.annual.find(x=>x.id===id);if(!a)return;const t=prompt('일정 내용:',a.title);if(t===null)return;const d=prompt('날짜 (YYYY-MM-DD):',a.date);if(d===null)return;const nt=t.trim()||a.title,nd=d.trim()||a.date;
+  if(sb&&me&&me.real){const {error}=await sb.from('annual').update({title:nt,date:nd}).eq('id',id);if(error){toast('❌ 수정 실패',error.message,'var(--warn)');return}await loadBoard();}
+  else{a.title=nt;a.date=nd;save();}
+  renderBoard();toast('✏️ 일정 수정','일정을 수정했습니다.','var(--brand)')}
+async function delAnnual(id){
+  if(sb&&me&&me.real){const {error}=await sb.from('annual').delete().eq('id',id);if(error){toast('❌ 삭제 실패',error.message,'var(--warn)');return}await loadBoard();}
+  else{DB.annual=DB.annual.filter(x=>x.id!==id);save();}
+  renderBoard();toast('🗑 일정 삭제','일정을 삭제했습니다.','var(--out)')}
 function canEditSched(){return me.role==='master'||me.role==='director'||me.role==='counter'}
 const SHIFT_COLORS={'방준현':'#c7d2fe','권다은':'#bbf7d0','심낙범':'#fde68a','조성우':'#bae6fd','최성현':'#fbcfe8','김진아':'#fed7aa'};
 function teacherColor(t){return SHIFT_COLORS[t]||'#d1d5db'}
