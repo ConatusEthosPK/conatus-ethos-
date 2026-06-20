@@ -263,6 +263,10 @@
   .seat.absent::after{content:'공석';position:absolute;bottom:5px;right:6px;font-size:9px;color:var(--warn);font-weight:700}
   .seat.present::after{content:'';position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:var(--in)}
   .seat.empty{background:transparent;border-style:dashed;cursor:default}
+  .seat.apply{border-color:#a78bfa}
+  .seat.apply.empty{border-style:dashed;border-color:#a78bfa;cursor:pointer;background:rgba(167,139,250,.06)}
+  .seat.apply.empty .free{color:#a78bfa;font-weight:700}
+  .vbar{width:3px;background:var(--line);align-self:stretch;border-radius:2px;margin:0 3px;min-height:40px}
   .seat.book{border-style:dashed}
   .seat .free{font-size:10px;margin-top:9px;color:var(--faint)}
   .seat.g-n{border-left:3px solid var(--in)} .seat.g-3{border-left:3px solid var(--out)} .seat.g-2{border-left:3px solid var(--brand)} .seat.g-1{border-left:3px solid #a78bfa}
@@ -306,7 +310,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v33 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v34 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -336,9 +340,10 @@
     <!-- SEATS -->
     <div class="panel" id="p-seats">
       <h2 class="section">좌석배치도 · 순찰</h2>
-      <div class="subtitle">좌석을 탭하면 <b>재석/공석·정상·졸음·딴짓</b>을 체크합니다(순찰). 비어있는 공용석은 탭해서 학생을 배정할 수 있어요.</div>
+      <div class="subtitle">탭으로 구역을 이동하세요. 좌석을 탭하면 <b>재석/공석·졸음·딴짓</b>을 체크합니다(순찰). 신청석(보라 점선)은 탭해서 배정합니다.</div>
       <div class="seat-legend" id="seat-legend"></div>
-      <div id="seat-map"></div>
+      <div class="zone-nav" id="zone-nav"></div>
+      <div id="seat-map" style="overflow-x:auto"></div>
     </div>
 
     <!-- STUDENTS (master/counter) -->
@@ -805,20 +810,24 @@ async function refreshDM(){await loadDMs();if(activePanel==='dm')renderDM();}
 async function refreshQ(){await loadQuestions();if(activePanel==='questions')renderQuestions();}
 async function refreshContents(){await loadContents();if(activePanel==='contents')renderContents();}
 function genSeatsLayout(){
-  const pool=['강도연','권찬미','김경민','김남우','김상현','김수빈','김연우','김유리','김윤서','박하연','신도윤','안성현','이규진','정경민','조준범','홍도연','문도진','장영서','임수현','김도연','서린희','이한솔','정아람','진예린','노유림','황윤서','채민주','권유리','송근후','정서희','하예린','박정현','이재율','김태윤','한정연'];
+  const pool=['강도연','권찬미','김경민','김남우','김상현','김수빈','김연우','김유리','김윤서','박하연','신도윤','안성현','이규진','정경민','조준범','홍도연','문도진','장영서','임수현','김도연','서린희','이한솔','정아람','진예린','노유림','황윤서','채민주','권유리','송근후','정서희','하예린','박정현','이재율','김태윤','한정연','오세진','윤하늘','배준영','서지우'];
   const grds=['N수','N수','N수','고3','N수','N수','고3','N수','N수','고2','N수','N수','고3','N수','N수'];
-  const dg=['m','f','m','f'];
   let pi=0;const pick=()=>pool[(pi++)%pool.length];const gr=i=>grds[i%grds.length];const sx=i=>(i%2===0?'f':'m');
   const demo=DB.students.slice(0,4);let seats=[];
-  for(let i=1;i<=48;i++){let name='',grade='',sid=null,present=null,gender=sx(i);
-    if(i<=4&&demo[i-1]){const s=demo[i-1];name=s.name;grade=s.grade;sid=s.id;present=true;gender=dg[i-1];}
+  function num(id,label,zone,i){let name='',grade='',gender=sx(i),sid=null,present=null;
+    if(i<=4&&demo[i-1]){const s=demo[i-1];name=s.name;grade=s.grade;sid=s.id;present=true;gender=(i%2?'m':'f');}
     else if(i%9===0){}
     else{name=pick();grade=gr(i);present=(i%6!==0);}
-    seats.push({id:'A'+i,label:String(i),zone:'1관 일반석',kan:'1관',name,grade,gender,sid,bookable:false,present,flag:null});}
-  const mkZone=(prefix,zone,n,kan,booked)=>{for(let i=1;i<=n;i++){const has=booked&&i<=booked;seats.push({id:prefix+i,label:prefix+'-'+i,zone,kan,name:has?pick():'',grade:has?'N수':'',gender:sx(i),sid:null,bookable:true,present:has?true:null,flag:null});}};
-  mkZone('ST','스탠딩석',4,'1관',1);mkZone('LZ','1관 라운지',5,'1관',2);mkZone('BED','침대',3,'1관',1);mkZone('BTH','비대면 부스',3,'1관',1);
-  for(let i=1;i<=12;i++){let name='',grade='',present=null;if(i%5!==0){name=pick();grade=gr(i+3);present=(i%4!==0);}seats.push({id:'B'+i,label:'2-'+i,zone:'2관 일반석',kan:'2관',name,grade,gender:sx(i),sid:null,bookable:false,present,flag:null});}
-  mkZone('2C','2관 공용좌석',6,'2관',2);
+    seats.push({id,label,zone,kan:zone,name,grade,gender,sid,bookable:false,present,flag:null});}
+  function apply(id,label,zone){seats.push({id,label,zone,kan:zone,name:'',grade:'',gender:'m',sid:null,bookable:true,present:null,flag:null});}
+  for(let n=1;n<=83;n++)num(String(n),String(n),'1관',n);
+  ['H','I','J','K'].forEach(L=>apply('1관-'+L,L,'1관'));
+  for(let n=1;n<=17;n++)num('2-'+n,'2-'+n,'2관',n+5);
+  for(let n=101;n<=111;n++)num(String(n),String(n),'2관',n);
+  'abcdefghijklmnopqrs'.split('').forEach(L=>apply('2관-'+L,L,'2관'));
+  ['L','M','휴게실','방음부스'].forEach(L=>apply('2관-'+L,L,'2관'));
+  'abcdefgh'.split('').forEach(L=>apply('라-'+L,L,'라운지'));
+  'ABCDEFG'.split('').forEach(L=>apply('외-'+L,L,'외부 스탠딩'));
   return seats;
 }
 async function loadSeats(){
@@ -950,35 +959,52 @@ function renderAll(){if(!me)return;
 }
 /* ===== seat map / 순찰 ===== */
 function gcls(g){if(!g)return'';if(g.indexOf('N')>=0||g.indexOf('재')>=0)return'g-n';if(g.indexOf('3')>=0)return'g-3';if(g.indexOf('2')>=0)return'g-2';if(g.indexOf('1')>=0)return'g-1';return''}
-const SEAT_ZONES=['1관 일반석','스탠딩석','1관 라운지','침대','비대면 부스','2관 일반석','2관 공용좌석'];
-function seatChip(s){
+const SEAT_ZONES=['1관','2관','라운지','외부 스탠딩'];
+let activeZone='1관';
+function seatById(id){return DB.seats.find(s=>s.id===id)}
+function cell(id){const s=seatById(id);if(!s)return '<div class="seat" style="visibility:hidden"></div>';
+  const ap=!!s.bookable;
   if(!s.name){
-    if(s.bookable)return `<div class="seat book" onclick="bookSeat('${s.id}')"><div class="sn">${s.label}</div><div class="free">＋ 신청</div></div>`;
-    return `<div class="seat empty"><div class="sn">${s.label}</div><div class="free">빈자리</div></div>`;
+    if(ap)return `<div class="seat apply empty" onclick="bookSeat('${s.id}')"><div class="sn">${s.label}</div><div class="free">＋</div></div>`;
+    return `<div class="seat empty"><div class="sn">${s.label}</div></div>`;
   }
-  let cls='seat '+(s.gender==='f'?'sx-f':'sx-m')+' '+(s.present?'present':'absent');
+  let cls='seat '+(ap?'apply ':'')+(s.gender==='f'?'sx-f':'sx-m')+' '+(s.present?'present':'absent');
   if(s.present&&s.flag==='졸음')cls+=' f-doze';
   if(s.present&&s.flag==='딴짓')cls+=' f-distract';
-  const icon=(s.present&&s.flag==='졸음')?'😴':(s.present&&s.flag==='딴짓')?'📵':'';
-  return `<div class="${cls}" onclick="openSeatPopup('${s.id}')"><div class="sn">${s.label}${icon?' '+icon:''}</div><div class="snm">${s.name}</div><div class="sg">${s.grade||''}</div></div>`;
+  const icon=(s.present&&s.flag==='졸음')?' 😴':(s.present&&s.flag==='딴짓')?' 📵':'';
+  return `<div class="${cls}" onclick="openSeatPopup('${s.id}')"><div class="sn">${s.label}${icon}</div><div class="snm">${s.name}</div></div>`;
 }
+const vcol=ids=>`<div class="scol">${ids.map(cell).join('')}</div>`;
+const hrow=ids=>`<div class="srow">${ids.map(cell).join('')}</div>`;
+const pcol=rows=>`<div class="scol">${rows.map(r=>`<div class="srow">${r.map(cell).join('')}</div>`).join('')}</div>`;
+function lay1(){return `<div class="floor"><div class="floor-row" style="align-items:flex-start">
+  ${vcol(['24','23','22','21','20','19'])}${vcol(['30','29','28','27','26','25'])}${vcol(['36','35','34','33','32','31'])}<div class="vbar"></div>${vcol(['41','40','39','38','37'])}${vcol(['46','45','44','43','42'])}<div class="vbar"></div>${vcol(['52','51','50','49','48','47'])}${vcol(['58','57','56','55','54','53'])}${vcol(['63','62','61','60','59'])}${vcol(['1관-K'])}
+  </div><div class="floor-row" style="margin-top:16px;align-items:flex-start">
+  <div class="scol" style="gap:10px">${hrow(['14','15','16','17','18'])}${hrow(['13','12','11'])}${hrow(['10','9','8'])}</div>${vcol(['1관-H','1관-I','1관-J'])}
+  <div class="scol" style="gap:8px">${hrow(['64','65','66','67','68','69','70'])}${hrow(['71','72','73','74','75','76','77'])}${hrow(['78','79','80','81','82','83'])}${hrow(['7','6','5','4','3','2','1'])}</div>
+  </div></div>`}
+function lay2(){return `<div class="floor"><div class="floor-row" style="align-items:flex-start">
+  ${vcol(['2-10','2-9','2-8','2-7','2-6','2-5','2-4','2-3','2-2','2-1'])}
+  <div class="scol">${pcol([['101','104'],['102','105'],['103','106'],['109','107'],['110','108']])}${hrow(['111'])}</div>
+  <div class="scol"><div class="zlabel">신청석</div>${hrow(['2관-a','2관-b','2관-c','2관-d','2관-e'])}${pcol([['2관-f','2관-g'],['2관-h','2관-i'],['2관-j','2관-k'],['2관-l','2관-m'],['2관-n','2관-o'],['2관-p','2관-q'],['2관-r','2관-s']])}${hrow(['2관-L','2관-M'])}</div>
+  ${vcol(['2-11','2-12','2-13','2-14','2-15','2-16','2-17'])}
+  </div><div class="floor-row" style="margin-top:10px"><div class="zlabel">신청석</div>${hrow(['2관-휴게실','2관-방음부스'])}</div></div>`}
+function layLounge(){return `<div class="floor"><div class="zlabel">신청석 (라운지)</div><div class="floor-row">${hrow(['라-g','라-h'])}</div><div class="floor-row">${vcol(['라-f','라-e','라-d'])}</div><div class="floor-row">${hrow(['라-c','라-b','라-a'])}</div></div>`}
+function layExt(){return `<div class="floor"><div class="zlabel">신청석 (외부 스탠딩)</div><div class="floor-row">${hrow(['외-G'])}<div style="width:14px"></div>${hrow(['외-A','외-B','외-C'])}</div><div class="floor-row">${hrow(['외-D','외-E'])}</div><div class="floor-row">${hrow(['외-F'])}</div></div>`}
 function renderSeats(){
-  let present=0,absent=0,empty=0,doze=0,distract=0;
-  DB.seats.forEach(s=>{if(s.name){if(s.present){present++;if(s.flag==='졸음')doze++;if(s.flag==='딴짓')distract++}else absent++}else if(!s.bookable)empty++});
+  let present=0,absent=0,doze=0,distract=0,ap=0;
+  DB.seats.forEach(s=>{if(s.name){if(s.present){present++;if(s.flag==='졸음')doze++;if(s.flag==='딴짓')distract++}else absent++}else if(s.bookable)ap++});
   document.getElementById('seat-legend').innerHTML=
     `<div class="lg"><span class="sw" style="background:var(--in)"></span>재석 ${present}</div>`+
     `<div class="lg"><span class="sw" style="background:var(--warn);opacity:.6"></span>공석 ${absent}</div>`+
-    `<div class="lg">😴 졸음 ${doze}</div>`+
-    `<div class="lg">📵 딴짓 ${distract}</div>`+
-    `<div class="lg"><span class="sw" style="border:1px dashed var(--faint)"></span>빈자리 ${empty}</div>`+
-    `<div class="lg" style="margin-left:auto"><span class="sw" style="background:#93c5fd"></span>남</div>`+
-    `<div class="lg"><span class="sw" style="background:#f9a8d4"></span>여</div>`;
-  document.getElementById('seat-map').innerHTML=SEAT_ZONES.map(z=>{
-    const list=DB.seats.filter(s=>s.zone===z);if(!list.length)return'';
-    const occ=list.filter(s=>s.name).length;
-    return `<div class="seat-zone"><h3>${z} <span class="zcount">${occ}/${list.length}명</span></h3><div class="seat-row">${list.map(seatChip).join('')}</div></div>`;
-  }).join('');
+    `<div class="lg">😴 ${doze}</div><div class="lg">📵 ${distract}</div>`+
+    `<div class="lg"><span class="sw" style="border:1px dashed #a78bfa"></span>신청석</div>`+
+    `<div class="lg" style="margin-left:auto"><span class="sw" style="background:#93c5fd"></span>남</div><div class="lg"><span class="sw" style="background:#f9a8d4"></span>여</div>`;
+  document.getElementById('zone-nav').innerHTML=SEAT_ZONES.map(z=>`<button class="${z===activeZone?'active':''}" onclick="setZone('${z}')">${z}</button>`).join('');
+  const lay={'1관':lay1,'2관':lay2,'라운지':layLounge,'외부 스탠딩':layExt}[activeZone];
+  document.getElementById('seat-map').innerHTML=lay?lay():'';
 }
+function setZone(z){activeZone=z;renderSeats()}
 async function bookSeat(id){const s=DB.seats.find(x=>x.id===id);if(!s)return;const nm=(prompt(s.zone+' '+s.label+' 좌석 배정 — 학생 이름 입력:','')||'').trim();if(!nm)return;const g=(prompt('성별 (남/여):','남')||'').trim();const gender=(g.indexOf('여')>=0)?'f':'m';
   if(sb&&me&&me.real){const {error}=await sb.from('seats').update({occupant_name:nm,gender,grade:s.grade||'N수',present:true}).eq('id',id);if(error){toast('❌ 실패',error.message,'var(--warn)');return}await loadSeats();}
   else{s.name=nm;s.gender=gender;if(!s.grade)s.grade='N수';s.present=true;save();}
