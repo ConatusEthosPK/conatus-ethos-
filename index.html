@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Conatus Ethos — 독학재수학원 관리</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
 <style>
   :root{
     --bg:#0f1115; --panel:#171a21; --panel-2:#1e222b; --line:#2a2f3a;
@@ -18,7 +19,9 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
-  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:radial-gradient(1200px 600px at 80% -10%,#1b2030 0%,var(--bg) 55%);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased}
+  :root{--font:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+  body{font-family:var(--font);background:radial-gradient(1200px 600px at 80% -10%,#1b2030 0%,var(--bg) 55%);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased}
+  button,input,select,textarea,option{font-family:var(--font)}
   button{font-family:inherit;cursor:pointer}
   input,select,textarea{font-family:inherit}
 
@@ -303,7 +306,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v32 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v33 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -1197,14 +1200,17 @@ function canManageContent(){return me.role==='master'||me.role==='director'||me.
 function renderContents(){
   const mgr=canManageContent();
   document.getElementById('c-edit-hint').textContent=mgr?'(카운터·원장·마스터가 등록·삭제)':'';
+  const ec=editingContent?DB.contents.find(c=>c.id===editingContent):null;
+  const ctv=ec?String(ec.title||'').replace(/"/g,'&quot;'):'';const cdv=ec?String(ec.deadline||'').replace(/"/g,'&quot;'):'';
   document.getElementById('c-form').innerHTML = mgr? `<div class="card" style="max-width:560px;margin-bottom:16px">
-    <input class="in" id="ct-title" placeholder="컨텐츠명 (예: 이감 시즌6)" style="margin-bottom:8px">
-    <textarea class="in" id="ct-desc" placeholder="설명" style="min-height:60px;margin-bottom:8px"></textarea>
-    <div class="grid g2" style="gap:8px"><input class="in" id="ct-price" type="number" placeholder="가격(원)"><input class="in" id="ct-deadline" placeholder="마감일 (2026-07-01)"></div>
-    <button class="btn primary sm" style="margin-top:10px" onclick="addContent()">컨텐츠 등록</button></div>`:'';
+    ${ec?'<div style="font-size:12px;color:var(--brand);font-weight:700;margin-bottom:8px">✏️ 컨텐츠 수정 중</div>':''}
+    <input class="in" id="ct-title" placeholder="컨텐츠명 (예: 이감 시즌6)" style="margin-bottom:8px" value="${ctv}">
+    <textarea class="in" id="ct-desc" placeholder="설명" style="min-height:60px;margin-bottom:8px">${ec?String(ec.desc||''):''}</textarea>
+    <div class="grid g2" style="gap:8px"><input class="in" id="ct-price" type="number" placeholder="가격(원)" value="${ec&&ec.price?ec.price:''}"><input class="in" id="ct-deadline" placeholder="마감일 (2026-07-01)" value="${cdv}"></div>
+    <button class="btn primary sm" style="margin-top:10px" onclick="submitContent()">${ec?'수정 완료':'컨텐츠 등록'}</button>${ec?'<button class="btn ghost sm" style="margin-top:10px;margin-left:6px" onclick="cancelEditContent()">취소</button>':''}</div>`:'';
   document.getElementById('c-list').innerHTML=DB.contents.map(c=>{
     const apps=DB.contentApps.filter(a=>a.cid===c.id);const applied=apps.some(a=>a.sid===me.sid);
-    const right = mgr? `<div style="text-align:right;display:flex;flex-direction:column;gap:6px;align-items:flex-end"><button class="btn sm" onclick="openContentApps(${c.id})">👥 신청자 ${apps.length}명</button><button class="btn sm ghost" onclick="delContent(${c.id})">삭제</button></div>`
+    const right = mgr? `<div style="text-align:right;display:flex;flex-direction:column;gap:6px;align-items:flex-end"><button class="btn sm" onclick="openContentApps(${c.id})">👥 신청자 ${apps.length}명</button><div style="display:flex;gap:6px"><button class="btn sm" onclick="editContent(${c.id})">수정</button><button class="btn sm ghost" onclick="delContent(${c.id})">삭제</button></div></div>`
       : (me.role==='student'? (applied?'<span class="pill done">신청완료</span>':`<button class="btn primary sm" onclick="applyContent(${c.id})">신청</button>`) : `<button class="btn sm" onclick="openContentApps(${c.id})">신청자 ${apps.length}명</button>`);
     return `<div class="qcard"><div class="qhead"><div><b>${c.title}</b><div class="qmeta">${c.price?won(c.price):'무료'} · 마감 ${c.deadline||'-'}</div></div>${right}</div><div style="font-size:13px;color:var(--muted);margin-top:8px">${c.desc||''}</div></div>`;
   }).join('')||'<div class="empty">등록된 컨텐츠가 없습니다</div>';
@@ -1216,10 +1222,19 @@ function openContentApps(cid){const c=DB.contents.find(x=>x.id===cid);if(!c)retu
   document.getElementById('appsModal').classList.add('show');
 }
 function closeApps(){document.getElementById('appsModal').classList.remove('show')}
-async function addContent(){const t=document.getElementById('ct-title').value.trim();if(!t){toast('⚠️ 제목 필요','컨텐츠명을 입력하세요.','var(--warn)');return}const descr=document.getElementById('ct-desc').value.trim(),price=parseInt(document.getElementById('ct-price').value)||0,deadline=document.getElementById('ct-deadline').value.trim();
-  if(sb&&me&&me.real){const {error}=await sb.from('contents').insert({title:t,descr,price,deadline});if(error){toast('❌ 등록 실패',error.message,'var(--warn)');return}await loadContents();}
-  else{DB.contents.push({id:Date.now(),title:t,desc:descr,price,deadline});save();}
-  renderContents();toast('📦 컨텐츠 등록','등록되었습니다.','var(--brand)')}
+let editingContent=null;
+function editContent(id){editingContent=id;renderContents();const el=document.getElementById('ct-title');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});}
+function cancelEditContent(){editingContent=null;renderContents();}
+async function submitContent(){const t=document.getElementById('ct-title').value.trim();if(!t){toast('⚠️ 제목 필요','컨텐츠명을 입력하세요.','var(--warn)');return}const descr=document.getElementById('ct-desc').value.trim(),price=parseInt(document.getElementById('ct-price').value)||0,deadline=document.getElementById('ct-deadline').value.trim();
+  if(editingContent){const id=editingContent;
+    if(sb&&me&&me.real){const {error}=await sb.from('contents').update({title:t,descr,price,deadline}).eq('id',id);if(error){toast('❌ 수정 실패',error.message,'var(--warn)');return}await loadContents();}
+    else{const c=DB.contents.find(x=>x.id===id);if(c){c.title=t;c.desc=descr;c.price=price;c.deadline=deadline;}save();}
+    editingContent=null;renderContents();toast('✏️ 컨텐츠 수정','수정했습니다. (신청자는 그대로 유지)','var(--brand)');
+  }else{
+    if(sb&&me&&me.real){const {error}=await sb.from('contents').insert({title:t,descr,price,deadline});if(error){toast('❌ 등록 실패',error.message,'var(--warn)');return}await loadContents();}
+    else{DB.contents.push({id:Date.now(),title:t,desc:descr,price,deadline});save();}
+    renderContents();toast('📦 컨텐츠 등록','등록되었습니다.','var(--brand)');
+  }}
 async function delContent(id){if(sb&&me&&me.real){const {error}=await sb.from('contents').delete().eq('id',id);if(error){toast('❌ 삭제 실패',error.message,'var(--warn)');return}await loadContents();}else{DB.contents=DB.contents.filter(c=>c.id!==id);DB.contentApps=DB.contentApps.filter(a=>a.cid!==id);save();}renderContents()}
 async function applyContent(cid){if(DB.contentApps.some(a=>a.cid===cid&&String(a.sid)===String(me.sid)))return;const s=studentById(me.sid);const sname=s?s.name:me.name;
   if(sb&&me&&me.real){const {error}=await sb.from('content_apps').insert({content_id:cid,student_id:me.sid||null,student_name:sname});if(error){toast('❌ 신청 실패',error.message,'var(--warn)');return}await loadContents();}
