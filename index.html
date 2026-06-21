@@ -318,7 +318,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v50 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v52 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -405,13 +405,23 @@
         <label class="fld"><span>학부모 휴대폰 (문자 수신)</span><input class="in" id="f-parent" placeholder="01098765432"></label>
         <div class="grid g2" style="gap:10px">
           <label class="fld"><span>학교(출신)</span><input class="in" id="f-school" placeholder="○○고"></label>
-          <div class="fld"><span>구분</span><select class="in" id="f-grade"></select></div>
+          <label class="fld"><span>구분</span><select class="in" id="f-grade"></select></label>
         </div>
         <div class="grid g2" style="gap:10px">
-          <label class="fld"><span>학원비(월)</span><input class="in" id="f-tuition" type="number" placeholder="450000"></label>
+          <label class="fld"><span>성별</span><select class="in" id="f-gender"><option value="m">남</option><option value="f">여</option></select></label>
           <label class="fld"><span>수납일</span><input class="in" id="f-payday" type="number" placeholder="5"></label>
         </div>
-        <div class="fld"><span>자리 배정 (선택)</span><select class="in" id="f-seat"></select></div>
+        <label class="fld"><span>학원비(월)</span><input class="in" id="f-tuition" type="number" placeholder="450000"></label>
+        <div class="fld" style="margin-bottom:6px"><span>최근 모의고사 성적 (선택)</span></div>
+        <div class="grid g2" style="gap:8px;margin-bottom:8px">
+          <select class="in" id="f-exam"></select>
+          <select class="in" id="f-subj"></select>
+        </div>
+        <div class="grid g2" style="gap:8px;margin-bottom:12px">
+          <input class="in" id="f-score" type="number" placeholder="원점수">
+          <input class="in" id="f-rank" type="number" placeholder="등급 (예: 2)">
+        </div>
+        <label class="fld"><span>자리 배정 (선택)</span><select class="in" id="f-seat"></select></label>
         <label class="fld"><span>비고</span><textarea class="in" id="f-note" placeholder="특이사항, 메모 등"></textarea></label>
         <button class="btn primary" style="width:100%" onclick="addStudent()">원생 등록</button>
       </div>
@@ -786,6 +796,17 @@ function save(){LS.set(DB)}
 let me=null;
 
 /* ============ helpers ============ */
+const EXAM_NAMES=['26수능','26 9월','26 6월','27 6월'];
+const SUBJECT_GROUPS=[
+  ['국어',['언어와매체','화법과작문']],
+  ['수학',['확률과통계','미적분','기하']],
+  ['영어',['영어']],
+  ['사회탐구',['생활과윤리','윤리와사상','한국지리','세계지리','동아시아사','세계사','경제','정치와법','사회·문화']],
+  ['과학탐구',['물리학Ⅰ','화학Ⅰ','생명과학Ⅰ','지구과학Ⅰ','물리학Ⅱ','화학Ⅱ','생명과학Ⅱ','지구과학Ⅱ']],
+];
+function examNameOptions(sel){return EXAM_NAMES.map(e=>`<option${sel===e?' selected':''}>${e}</option>`).join('')}
+function subjectOptions(sel){let h='';SUBJECT_GROUPS.forEach(([g,arr])=>{if(arr.length===1&&arr[0]===g){h+=`<option${sel===g?' selected':''}>${g}</option>`;}else{h+=`<optgroup label="${g}">`+arr.map(s=>`<option${sel===s?' selected':''}>${s}</option>`).join('')+`</optgroup>`;}});return h;}
+function fillExamSubj(examId,subjId){const e=document.getElementById(examId);if(e)e.innerHTML='<option value="">시험 선택</option>'+examNameOptions();const s=document.getElementById(subjId);if(s)s.innerHTML='<option value="">과목 선택</option>'+subjectOptions();}
 function studentById(id){return DB.students.find(s=>s.id===id)}
 function todayLogs(sid){return DB.attend.filter(a=>a.sid===sid&&a.date===todayStr())}
 function status(sid){const l=todayLogs(sid);if(l.some(x=>x.type==='OUT'))return'out';if(l.some(x=>x.type==='IN'))return'in';return'none'}
@@ -877,7 +898,7 @@ async function loadStudents(){
     ]);
     if(st.data){
       DB.students=st.data.map(r=>({id:r.id,name:r.name,phone:r.phone||'',parent:r.parent_phone||'',school:r.school||'',grade:r.grade||'',gender:r.gender||'m',birth:r.birth||'',address:r.address||'',emergency:r.emergency||'',note:r.note||'',tuition:r.tuition||0,payDay:r.pay_day||5,mealFee:0,lastCounsel:r.last_counsel||null,counselDue:r.counsel_due||todayStr(),counselHist:[],grades:[]}));
-      if(gr.data)gr.data.forEach(g=>{const s=DB.students.find(x=>x.id===g.student_id);if(s)s.grades.push({date:g.date,exam:g.exam,subject:g.subject,score:g.score})});
+      if(gr.data)gr.data.forEach(g=>{const s=DB.students.find(x=>x.id===g.student_id);if(s)s.grades.push({date:g.date,exam:g.exam,subject:g.subject,score:g.score,rank:g.rank})});
       if(cl.data)cl.data.forEach(c=>{const s=DB.students.find(x=>x.id===c.student_id);if(s)s.counselHist.push(c.date)});
     }
   }catch(e){console.error('원생 로딩 실패',e);}
@@ -1101,7 +1122,7 @@ let stFilter='all';
 const selectedSids=new Set();
 function setStFilter(f){stFilter=f;renderStudents()}
 function renderStudents(){
-  fillSeatSelect('f-seat','');
+  fillSeatSelect('f-seat','');fillExamSubj('f-exam','f-subj');
   const q=(document.getElementById('st-search').value||'').trim();
   const all=DB.students;
   const cnt={all:all.length,none:0,in:0,out:0};
@@ -1351,7 +1372,7 @@ async function editTT(day,period){let tt=DB.timetables[me.id];if(!tt){tt=DB.time
     await loadTimetables(me.id);
   }else{if(!v.trim())delete tt[day][period];else tt[day][period]=v.trim();save();}
   renderMyTimetable()}
-function renderMyGrades(){const s=studentById(me.sid);const g=s&&s.grades?s.grades.slice().sort((a,b)=>b.date.localeCompare(a.date)):[];document.getElementById('myg-body').innerHTML=g.length?g.map(x=>`<tr><td style="color:var(--muted)">${x.date}</td><td>${x.exam}</td><td>${x.subject}</td><td><b>${x.score}</b>점</td></tr>`).join(''):'<tr><td colspan="4" class="empty">등록된 성적이 없습니다</td></tr>'}
+function renderMyGrades(){const s=studentById(me.sid);const g=s&&s.grades?s.grades.slice().sort((a,b)=>b.date.localeCompare(a.date)):[];document.getElementById('myg-body').innerHTML=g.length?g.map(x=>`<tr><td style="color:var(--muted)">${x.date}</td><td>${x.exam}</td><td>${x.subject}</td><td>${gradeScoreText(x)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">등록된 성적이 없습니다</td></tr>'}
 function payItems(s){const mm=monthMeals(s.id);const M=new Date().getMonth()+1;return [
   {name:'학원비',amount:s.tuition||0,due:`매월 ${s.payDay||'-'}일`,status:'납부 예정'},
   {name:`${M}월 급식비`,amount:mm.fee,due:'계좌이체',status:`점심 ${mm.lunch}·저녁 ${mm.dinner}회`},
@@ -1392,11 +1413,17 @@ async function linkStudent(uid,sid){const v=sid?Number(sid):null;
   renderUsers();toast('🔗 원생 연결',v?'학생 계정을 원생과 연결했습니다.':'연결을 해제했습니다.','var(--brand)')}
 async function addStudent(){const name=val('f-name'),phone=val('f-phone');if(!name||!phone){toast('⚠️ 입력 필요','이름과 학생 휴대폰은 필수입니다.','var(--warn)');return}
   const tuition=parseInt(val('f-tuition'))||450000,payDay=parseInt(val('f-payday'))||5;
-  const seatId=val('f-seat');let newSid=null;
-  if(sb&&me&&me.real){const {error}=await sb.from('students').insert({name,phone,parent_phone:val('f-parent'),school:val('f-school'),grade:val('f-grade'),tuition,pay_day:payDay,note:val('f-note'),counsel_due:todayStr()});if(error){toast('❌ 등록 실패',error.message,'var(--warn)');return}await loadStudents();const ns=DB.students.filter(x=>x.name===name&&x.phone===phone).slice(-1)[0];newSid=ns?ns.id:null;}
-  else{newSid=DB.nextSid;DB.students.push({id:DB.nextSid++,name,phone,parent:val('f-parent'),school:val('f-school'),grade:val('f-grade'),tuition,payDay,mealFee:0,note:val('f-note'),lastCounsel:null,counselDue:todayStr(),counselHist:[],grades:[]});save();}
+  const seatId=val('f-seat'),gender=val('f-gender')||'m';let newSid=null;
+  const exam=val('f-exam'),subj=val('f-subj'),score=val('f-score'),rank=val('f-rank');
+  if(sb&&me&&me.real){const {error}=await sb.from('students').insert({name,phone,parent_phone:val('f-parent'),school:val('f-school'),grade:val('f-grade'),gender,tuition,pay_day:payDay,note:val('f-note'),counsel_due:todayStr()});if(error){toast('❌ 등록 실패',error.message,'var(--warn)');return}await loadStudents();const ns=DB.students.filter(x=>x.name===name&&x.phone===phone).slice(-1)[0];newSid=ns?ns.id:null;}
+  else{newSid=DB.nextSid;DB.students.push({id:DB.nextSid++,name,phone,parent:val('f-parent'),school:val('f-school'),grade:val('f-grade'),gender,tuition,payDay,mealFee:0,note:val('f-note'),lastCounsel:null,counselDue:todayStr(),counselHist:[],grades:[]});save();}
+  if(newSid&&exam&&(score!==''||rank!=='')){
+    const subjN=subj||'전과목';
+    if(sb&&me&&me.real){await sb.from('grades').insert({student_id:newSid,date:todayStr(),exam,subject:subjN,score:score!==''?Number(score):null,rank:rank!==''?Number(rank):null});await loadStudents();}
+    else{const ns=studentById(newSid);if(ns){(ns.grades=ns.grades||[]).push({date:todayStr(),exam,subject:subjN,score:score!==''?Number(score):null,rank:rank!==''?Number(rank):null});save();}}
+  }
   if(seatId&&newSid)await assignStudentSeat(newSid,seatId);
-  ['f-name','f-phone','f-parent','f-school','f-tuition','f-payday','f-note'].forEach(i=>document.getElementById(i).value='');const fs=document.getElementById('f-seat');if(fs)fs.value='';toast('🎉 원생 등록',`${name} 학생이 등록되었습니다.${seatId?' 자리도 배정했어요.':''}`,'var(--brand)');renderAll()}
+  ['f-name','f-phone','f-parent','f-school','f-tuition','f-payday','f-note','f-exam','f-subj','f-score','f-rank'].forEach(i=>document.getElementById(i).value='');const fs=document.getElementById('f-seat');if(fs)fs.value='';toast('🎉 원생 등록',`${name} 학생이 등록되었습니다.${seatId?' 자리도 배정했어요.':''}`,'var(--brand)');renderAll()}
 async function toggleMeal(kind){const s=studentById(me.sid);if(!s)return;
   if(pastMealDeadline(kind)){toast('⏰ 신청 마감',`${kind==='lunch'?'점심':'저녁'} 급식 신청은 ${MEAL_DEADLINE_LABEL[kind]}까지입니다. (현재 ${nowTime()})`,'var(--warn)');renderMealApply();return}
   let m=mealOf(s.id,todayStr());const on=!(m&&m[kind]);
@@ -1436,10 +1463,13 @@ function openStudent(sid){mdSid=sid;const s=studentById(sid);document.getElement
     <div class="mblock">
       <h4>성적</h4>
       <div id="md-grades"></div>
-      <div style="display:flex;gap:6px;margin-top:9px">
-        <input class="in" id="g-exam" placeholder="시험명 (예: 6월 평가원)" style="flex:2">
-        <input class="in" id="g-subj" placeholder="과목" style="flex:1">
-        <input class="in" id="g-score" type="number" placeholder="점수" style="flex:1">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px">
+        <select class="in" id="g-exam"><option value="">시험 선택</option>${examNameOptions()}</select>
+        <select class="in" id="g-subj"><option value="">과목 선택</option>${subjectOptions()}</select>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <input class="in" id="g-score" type="number" placeholder="원점수" style="flex:1">
+        <input class="in" id="g-rank" type="number" placeholder="등급" style="flex:1">
         <button class="btn primary sm" onclick="addGrade()">추가</button>
       </div>
     </div>
@@ -1471,11 +1501,13 @@ function openStudent(sid){mdSid=sid;const s=studentById(sid);document.getElement
   const now=new Date();calState={sid,y:now.getFullYear(),m:now.getMonth()};renderCal();renderGrades();
   document.getElementById('modal').classList.add('show');
 }
-function renderGrades(){const s=studentById(mdSid);const g=(s.grades||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));document.getElementById('md-grades').innerHTML=g.length?g.map(x=>`<div class="mini"><span>${x.exam} · ${x.subject}</span><span><b>${x.score}</b>점 <span style="color:var(--faint)">${x.date}</span></span></div>`).join(''):'<div class="empty">성적 기록 없음</div>'}
-async function addGrade(){const s=studentById(mdSid);const exam=document.getElementById('g-exam').value.trim(),subj=document.getElementById('g-subj').value.trim(),score=document.getElementById('g-score').value.trim();if(!exam||!subj||score===''){toast('⚠️ 입력 필요','시험명·과목·점수를 입력하세요.','var(--warn)');return}
-  if(sb&&me&&me.real){const {error}=await sb.from('grades').insert({student_id:mdSid,date:todayStr(),exam,subject:subj,score:Number(score)});if(error){toast('❌ 실패',error.message,'var(--warn)');return}await loadStudents();}
-  else{(s.grades=s.grades||[]).push({date:todayStr(),exam,subject:subj,score:Number(score)});save();}
-  renderGrades();['g-exam','g-subj','g-score'].forEach(i=>document.getElementById(i).value='');toast('📊 성적 등록',`${s.name} · ${exam} ${subj} ${score}점`,'var(--brand)')}
+function gradeScoreText(x){const parts=[];if(x.score!=null&&x.score!=='')parts.push(`<b>${x.score}</b>점`);if(x.rank!=null&&x.rank!=='')parts.push(`<b>${x.rank}</b>등급`);return parts.join(' · ')||'-';}
+function renderGrades(){const s=studentById(mdSid);const g=(s.grades||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));document.getElementById('md-grades').innerHTML=g.length?g.map(x=>`<div class="mini"><span>${x.exam} · ${x.subject}</span><span>${gradeScoreText(x)} <span style="color:var(--faint)">${x.date}</span></span></div>`).join(''):'<div class="empty">성적 기록 없음</div>'}
+async function addGrade(){const s=studentById(mdSid);const exam=document.getElementById('g-exam').value.trim(),subj=document.getElementById('g-subj').value.trim(),score=document.getElementById('g-score').value.trim(),rank=document.getElementById('g-rank').value.trim();if(!exam||!subj||(score===''&&rank==='')){toast('⚠️ 입력 필요','시험·과목과 원점수 또는 등급을 입력하세요.','var(--warn)');return}
+  const sc=score!==''?Number(score):null,rk=rank!==''?Number(rank):null;
+  if(sb&&me&&me.real){const {error}=await sb.from('grades').insert({student_id:mdSid,date:todayStr(),exam,subject:subj,score:sc,rank:rk});if(error){toast('❌ 실패',error.message,'var(--warn)');return}await loadStudents();}
+  else{(s.grades=s.grades||[]).push({date:todayStr(),exam,subject:subj,score:sc,rank:rk});save();}
+  renderGrades();['g-score','g-rank'].forEach(i=>document.getElementById(i).value='');toast('📊 성적 등록',`${s.name} · ${exam} ${subj}${sc!=null?' '+sc+'점':''}${rk!=null?' '+rk+'등급':''}`,'var(--brand)')}
 let calState={sid:null,y:2026,m:0};
 function calMove(n){calState.m+=n;if(calState.m<0){calState.m=11;calState.y--}if(calState.m>11){calState.m=0;calState.y++}renderCal()}
 function renderCal(){
