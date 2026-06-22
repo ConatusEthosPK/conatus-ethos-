@@ -321,6 +321,34 @@
   #toast .tt{font-weight:700;font-size:13px;margin-bottom:3px;display:flex;align-items:center;gap:7px}
   #toast .tb{font-size:13px;color:var(--muted);line-height:1.45}
   .sms-tag{font-size:10px;background:var(--brand-soft);color:var(--brand);padding:2px 7px;border-radius:6px;font-weight:700}
+  /* 월간 스케줄표 */
+  .sch-setup{display:grid;grid-template-columns:1.4fr 90px 90px 80px;gap:6px;align-items:center;margin-bottom:6px}
+  .sch-setup .sublbl{font-size:12.5px;font-weight:700;color:var(--ink)}
+  .sch-head{margin-bottom:12px}
+  .sch-title{font-size:17px;font-weight:800}
+  .sch-meta{display:flex;gap:20px;font-size:13.5px;color:var(--muted);margin-top:5px}
+  .sch-tbl{width:100%;border-collapse:collapse;font-size:12px}
+  .sch-tbl th{background:var(--panel-2);color:var(--muted);padding:7px 6px;border:1px solid var(--line);font-size:12px}
+  .sch-tbl td{border:1px solid var(--line);padding:4px 6px;vertical-align:top}
+  .sch-tbl .dcol{width:62px;white-space:nowrap;color:var(--ink);font-weight:700;text-align:center}
+  .sch-tbl .wd{color:var(--muted);font-size:10px;margin-left:1px}
+  .sch-tbl tr.sun .dcol{color:var(--warn)}
+  .schcell{min-height:32px;white-space:pre-line;font-size:11.5px;cursor:text;line-height:1.3}
+  .schcell:focus{outline:2px solid var(--brand);outline-offset:-2px;background:var(--brand-soft)}
+  @media print{
+    @page{margin:12mm}
+    body{background:#fff!important;color:#000!important}
+    body *{visibility:hidden}
+    #msch-print-area,#msch-print-area *{visibility:visible}
+    #msch-print-area{position:absolute;left:0;top:0;width:100%}
+    .no-print{display:none!important}
+    .sch-title,.sch-meta,.sch-meta b{color:#000!important}
+    .sch-tbl{font-size:10.5px}
+    .sch-tbl th{background:#eee!important;color:#000!important;border:1px solid #999!important}
+    .sch-tbl td{border:1px solid #999!important;color:#000!important}
+    .sch-tbl tr.sun{background:#f4f4f4!important}
+    .schcell:focus{outline:0;background:transparent!important}
+  }
 </style>
 </head>
 <body>
@@ -356,7 +384,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v60 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v61 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -390,6 +418,37 @@
       <div class="seat-legend" id="seat-legend"></div>
       <div class="zone-nav" id="zone-nav"></div>
       <div id="seat-map" style="overflow-x:auto"></div>
+    </div>
+
+    <!-- 월간 학습 스케줄표 (신입생 상담용) -->
+    <div class="panel" id="p-schedule">
+      <h2 class="section">월간 학습 스케줄표</h2>
+      <div class="subtitle">신입생 첫 상담용. 학생·월을 고르고 과목별 교재·하루 분량을 넣은 뒤 <b>자동 채우기</b>를 누르면 한 달 표가 완성됩니다. 칸은 직접 수정 가능하고, <b>인쇄</b>해서 학생과 함께 쓰세요. (하루 순서: 국·수·영·탐)</div>
+      <div class="card no-print" style="max-width:760px">
+        <div class="grid g2" style="gap:10px">
+          <label class="fld"><span>학생</span><select class="in" id="msch-student"></select></label>
+          <label class="fld"><span>월</span><input class="in" type="month" id="msch-month" onchange="buildScheduleTable()"></label>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin:4px 0 12px;cursor:pointer"><input type="checkbox" id="msch-skipsun" checked style="width:16px;height:16px">일요일은 휴식(채우지 않음)</label>
+        <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">과목별 교재 / 시작 / 하루 분량 / 단위 — 비워두면 그 과목은 자동 채우기에서 제외됩니다.</div>
+        <div class="sch-setup" style="margin-bottom:4px;color:var(--faint);font-size:11px"><span></span><span>시작</span><span>하루분량</span><span>단위</span></div>
+        <div class="sch-setup"><span class="sublbl">국어</span><input class="in" id="msch-book-kor" placeholder="교재명"><input class="in" id="msch-start-kor" type="number" placeholder="1"><input class="in" id="msch-amt-kor" type="number" placeholder="10"><input class="in" id="msch-unit-kor" placeholder="쪽" value="쪽"></div>
+        <div class="sch-setup"><span class="sublbl">수학</span><input class="in" id="msch-book-mat" placeholder="교재명"><input class="in" id="msch-start-mat" type="number" placeholder="1"><input class="in" id="msch-amt-mat" type="number" placeholder="6"><input class="in" id="msch-unit-mat" placeholder="문항" value="문항"></div>
+        <div class="sch-setup"><span class="sublbl">영어</span><input class="in" id="msch-book-eng" placeholder="교재명"><input class="in" id="msch-start-eng" type="number" placeholder="1"><input class="in" id="msch-amt-eng" type="number" placeholder="10"><input class="in" id="msch-unit-eng" placeholder="쪽" value="쪽"></div>
+        <div class="sch-setup"><span class="sublbl">탐구</span><input class="in" id="msch-book-tam" placeholder="교재명"><input class="in" id="msch-start-tam" type="number" placeholder="1"><input class="in" id="msch-amt-tam" type="number" placeholder="1"><input class="in" id="msch-unit-tam" placeholder="강" value="강"></div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button class="btn primary" onclick="genSchedule()">🗓 자동 채우기</button>
+          <button class="btn ghost" onclick="buildScheduleTable()">비우기</button>
+          <button class="btn" style="margin-left:auto" onclick="printSchedule()">🖨 인쇄하기</button>
+        </div>
+      </div>
+      <div id="msch-print-area">
+        <div class="sch-head">
+          <div class="sch-title">PK대치스파르타 시흥배곧점 · 월간 학습 스케줄표</div>
+          <div class="sch-meta"><span>학생: <b id="msch-h-name">________</b></span><span id="msch-h-month"></span></div>
+        </div>
+        <div id="msch-table" style="overflow-x:auto"></div>
+      </div>
     </div>
 
     <!-- STUDENTS (master/counter) -->
@@ -712,15 +771,15 @@ function pastMealDeadline(kind){return nowTime()>MEAL_DEADLINE[kind]}
 const GRADES=['고1','고2','고3','재수생','N수생'];
 const ROLE_LABEL={master:'마스터',director:'원장',assistant:'조교',counter:'카운터',student:'학생',parent:'학부모',kiosk:'입구 태블릿'};
 const ROLE_PANELS={
-  master:['dashboard','seats','students','meals','counsel','register','board','staffsched','mytimetable','questions','contents','dm','templates','users'],
-  director:['dashboard','seats','students','counsel','register','board','staffsched','mytimetable','questions','contents','dm','templates'],
-  assistant:['seats','counsel','register','attendance','board','staffsched','mytimetable','questions','dm'],
-  counter:['seats','students','meals','attendance','register','board','staffsched','mytimetable','contents','dm','templates'],
+  master:['dashboard','seats','students','meals','counsel','register','schedule','board','staffsched','mytimetable','questions','contents','dm','templates','users'],
+  director:['dashboard','seats','students','counsel','register','schedule','board','staffsched','mytimetable','questions','contents','dm','templates'],
+  assistant:['seats','counsel','register','schedule','attendance','board','staffsched','mytimetable','questions','dm'],
+  counter:['seats','students','meals','attendance','register','schedule','board','staffsched','mytimetable','contents','dm','templates'],
   student:['mystatus','seats','mytimetable','mygrades','mealapply','mypay','board','staffsched','questions','contents','dm'],
   parent:['parenthome','board'],
   kiosk:['kiosk']
 };
-const PANEL_LABEL={dashboard:'대시보드',seats:'좌석배치도',students:'원생 조회',meals:'급식 현황',counsel:'상담 관리',register:'원생 등록',board:'공지·일정',staffsched:'조교 출근표',questions:'질문',contents:'컨텐츠 신청',dm:'DM',attendance:'출결 관리',templates:'발송문자 설정',users:'사용자 관리',mystatus:'내 출결',mytimetable:'시간표',mygrades:'내 성적',mealapply:'급식 신청',mypay:'납부 목록',parenthome:'자녀 현황',kiosk:'태블릿'};
+const PANEL_LABEL={dashboard:'대시보드',seats:'좌석배치도',students:'원생 조회',meals:'급식 현황',counsel:'상담 관리',register:'원생 등록',schedule:'스케줄표',board:'공지·일정',staffsched:'조교 출근표',questions:'질문',contents:'컨텐츠 신청',dm:'DM',attendance:'출결 관리',templates:'발송문자 설정',users:'사용자 관리',mystatus:'내 출결',mytimetable:'시간표',mygrades:'내 성적',mealapply:'급식 신청',mypay:'납부 목록',parenthome:'자녀 현황',kiosk:'태블릿'};
 const PK_PERIODS=[[1,'8:10~9:15'],[2,'9:30~10:35'],[3,'10:50~12:00'],[4,'13:00~14:00'],[5,'14:15~15:20'],[6,'15:35~16:40'],[7,'16:55~18:00'],[8,'19:00~20:15'],[9,'20:30~21:50'],[10,'22:00~23:00']];
 const PK_TIMETABLE=[['오픈','7:30',''],['준비시간','8:00 ~ 8:10','10분'],['1교시','8:10 ~ 9:15','65분'],['쉬는시간','9:15 ~ 9:30','15분'],['2교시','9:30 ~ 10:35','65분'],['쉬는시간','10:35 ~ 10:50','15분'],['3교시','10:50 ~ 12:00','70분'],['점심시간','12:00 ~ 13:00','60분'],['4교시','13:00 ~ 14:00','60분'],['쉬는시간','14:00 ~ 14:15','15분'],['5교시','14:15 ~ 15:20','65분'],['쉬는시간','15:20 ~ 15:35','15분'],['6교시','15:35 ~ 16:40','65분'],['쉬는시간','16:40 ~ 16:55','15분'],['7교시','16:55 ~ 18:00','65분'],['저녁시간','18:00 ~ 19:00','60분'],['8교시','19:00 ~ 20:15','75분'],['쉬는시간','20:15 ~ 20:30','15분'],['9교시','20:30 ~ 21:50','80분'],['쉬는시간','21:50 ~ 22:00','10분'],['10교시','22:00 ~ 23:00','60분']];
 
@@ -1039,7 +1098,7 @@ function showPanel(p){activePanel=p;document.querySelectorAll('.panel').forEach(
 /* ============ RENDER ============ */
 function canCounsel(){return me.role==='assistant'||me.role==='master'}
 function renderAll(){if(!me)return;
-  ({dashboard:renderDashboard,seats:renderSeats,students:renderStudents,meals:renderMeals,counsel:renderCounsel,attendance:renderAttendance,board:renderBoard,staffsched:renderStaffSched,questions:renderQuestions,contents:renderContents,dm:renderDM,templates:renderTemplates,users:renderUsers,mystatus:renderMyStatus,mytimetable:renderMyTimetable,mygrades:renderMyGrades,mealapply:renderMealApply,mypay:renderMyPay,parenthome:renderParentHome}[activePanel]||(()=>{}))();
+  ({dashboard:renderDashboard,seats:renderSeats,students:renderStudents,meals:renderMeals,counsel:renderCounsel,attendance:renderAttendance,board:renderBoard,staffsched:renderStaffSched,schedule:renderSchedule,questions:renderQuestions,contents:renderContents,dm:renderDM,templates:renderTemplates,users:renderUsers,mystatus:renderMyStatus,mytimetable:renderMyTimetable,mygrades:renderMyGrades,mealapply:renderMealApply,mypay:renderMyPay,parenthome:renderParentHome}[activePanel]||(()=>{}))();
 }
 /* ===== seat map / 순찰 ===== */
 function gcls(g){if(!g)return'';if(g.indexOf('N')>=0||g.indexOf('재')>=0)return'g-n';if(g.indexOf('3')>=0)return'g-3';if(g.indexOf('2')>=0)return'g-2';if(g.indexOf('1')>=0)return'g-1';return''}
@@ -1615,6 +1674,55 @@ async function kiosk(type){if(!kbuf){toast('⚠️ 번호 입력','휴대폰 번
 /* ============ toast ============ */
 let toastTimer;
 function toast(title,body,color){const el=document.getElementById('toast');el.style.borderLeftColor=color||'var(--in)';el.querySelector('.tt').innerHTML=title;el.querySelector('.tb').textContent=body;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),4200)}
+
+/* ============ 월간 학습 스케줄표 ============ */
+const SCH_SUBJECTS=[['kor','국어'],['mat','수학'],['eng','영어'],['tam','탐구']];
+function renderSchedule(){
+  const sel=document.getElementById('msch-student');
+  if(sel){const cur=sel.value;sel.innerHTML='<option value="">학생 선택</option>'+DB.students.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'','ko')).map(s=>`<option value="${s.id}">${s.name}${s.grade?' ('+s.grade+')':''}</option>`).join('');if(cur)sel.value=cur;}
+  const mo=document.getElementById('msch-month');if(mo&&!mo.value){const d=new Date();mo.value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+  if(!document.querySelector('#msch-table table'))buildScheduleTable();
+}
+function scheduleDays(){
+  const mv=(document.getElementById('msch-month')||{}).value;if(!mv)return[];
+  const p=mv.split('-'),y=+p[0],m=+p[1];const last=new Date(y,m,0).getDate();
+  const days=[];for(let d=1;d<=last;d++)days.push({d,wd:new Date(y,m-1,d).getDay()});
+  return days;
+}
+function buildScheduleTable(contentMap){
+  const days=scheduleDays();const WD=['일','월','화','수','목','금','토'];
+  if(!days.length){document.getElementById('msch-table').innerHTML='<div class="empty">월을 먼저 선택하세요.</div>';return;}
+  let h='<table class="sch-tbl"><thead><tr><th class="dcol">날짜</th>'+SCH_SUBJECTS.map(s=>`<th>${s[1]}</th>`).join('')+'</tr></thead><tbody>';
+  days.forEach(day=>{
+    h+=`<tr class="${day.wd===0?'sun':''}"><td class="dcol">${day.d}<span class="wd">(${WD[day.wd]})</span></td>`;
+    SCH_SUBJECTS.forEach(s=>{const key=day.d+'-'+s[0];const v=contentMap?(contentMap[key]||''):'';h+=`<td contenteditable="true" class="schcell">${v}</td>`;});
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  document.getElementById('msch-table').innerHTML=h;
+}
+function genSchedule(){
+  const days=scheduleDays();if(!days.length){toast('⚠️ 월 선택','먼저 월을 선택하세요.','var(--warn)');return;}
+  const skipSun=document.getElementById('msch-skipsun').checked;
+  const cfg=SCH_SUBJECTS.map(s=>({key:s[0],book:val('msch-book-'+s[0]),start:parseInt(val('msch-start-'+s[0]))||1,amt:parseInt(val('msch-amt-'+s[0]))||0,unit:val('msch-unit-'+s[0])||''}));
+  if(!cfg.some(c=>c.book)){toast('⚠️ 입력 필요','과목 교재를 1개 이상 입력하세요.','var(--warn)');return;}
+  const map={};let di=0;
+  days.forEach(day=>{
+    if(skipSun&&day.wd===0)return;
+    cfg.forEach(c=>{if(!c.book)return;const key=day.d+'-'+c.key;if(c.amt>0){const a=c.start+di*c.amt,b=a+c.amt-1;map[key]=`${c.book}\n${a}~${b}${c.unit}`;}else map[key]=c.book;});
+    di++;
+  });
+  buildScheduleTable(map);
+  toast('🗓 스케줄 생성','한 달 표를 채웠어요. 칸을 눌러 직접 수정할 수 있어요.','var(--brand)');
+}
+function printSchedule(){
+  if(!document.querySelector('#msch-table table')){toast('⚠️ 표 없음','먼저 표를 만들어주세요.','var(--warn)');return;}
+  const sid=document.getElementById('msch-student').value;const s=sid?studentById(Number(sid)):null;
+  const mv=document.getElementById('msch-month').value;
+  document.getElementById('msch-h-name').textContent=s?(s.name+(s.grade?' ('+s.grade+')':'')):'________';
+  document.getElementById('msch-h-month').textContent=mv?(mv.split('-')[0]+'년 '+(+mv.split('-')[1])+'월'):'';
+  window.print();
+}
 
 /* ============ theme ============ */
 function applyTheme(t){const light=t==='light';document.body.classList.toggle('light',light);['theme-label','theme-label-login'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=light?'다크 모드':'라이트 모드';});try{store.setItem('ce_theme',t)}catch(e){}}
