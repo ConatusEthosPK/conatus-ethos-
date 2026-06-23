@@ -224,8 +224,8 @@
   .cal-cell .ci{color:var(--in);font-weight:700;font-size:10px;margin-top:2px}
   .cal-cell .co{color:var(--out);font-weight:700;font-size:10px}
   .cal-cell .ab{color:var(--warn);font-size:10px;margin-top:2px}
-  #bulkmodal,#noticeModal,#seatModal,#appsModal,#contentPopup{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-start;justify-content:center;z-index:95;padding:40px 16px;overflow:auto}
-  #bulkmodal.show,#noticeModal.show,#seatModal.show,#appsModal.show,#contentPopup.show{display:flex}
+  #bulkmodal,#noticeModal,#seatModal,#appsModal,#contentPopup,#mealCalModal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-start;justify-content:center;z-index:95;padding:40px 16px;overflow:auto}
+  #bulkmodal.show,#noticeModal.show,#seatModal.show,#appsModal.show,#contentPopup.show,#mealCalModal.show{display:flex}
   .seat.f-doze{background:rgba(251,191,36,.22)}
   .seat.f-distract{background:rgba(248,113,113,.22)}
   .seat.sx-m{border-left:4px solid #93c5fd}
@@ -372,7 +372,7 @@
 
 <!-- LOGIN -->
 <div id="login-screen">
-  <button class="themebtn" id="theme-btn-login" onclick="toggleTheme()" title="화면 모드 전환" style="position:fixed;top:16px;right:16px;z-index:20"><span id="theme-label-login" style="font-size:17px;line-height:1">☀️</span></button>
+  <button class="themebtn" id="theme-btn-login" onclick="toggleTheme()" title="화면 모드 전환" style="position:fixed;top:16px;right:16px;z-index:20"><span id="theme-label-login" style="font-size:17px;line-height:1">🌙</span></button>
   <div class="login-box">
     <div class="login-logo"><div class="logo-mark">LOGO</div><div class="nm">Conatus Ethos</div><div class="sb">자습 · 독학재수</div></div>
     <div class="tabs2">
@@ -407,7 +407,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v65 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v66 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -415,7 +415,7 @@
 <div id="app">
   <div class="topbar">
     <div class="logo"><div class="logo-mark">LOGO</div><div><div class="brand-name">Conatus Ethos</div><div class="brand-sub">독학재수</div></div></div>
-    <div class="userchip"><button class="themebtn" id="theme-btn" onclick="toggleTheme()" title="화면 모드 전환"><span id="theme-label" style="font-size:17px;line-height:1">☀️</span></button><span class="rolebadge" id="u-role"></span><span class="uname" id="u-name"></span><button class="logout" onclick="logout()">로그아웃</button></div>
+    <div class="userchip"><button class="themebtn" id="theme-btn" onclick="toggleTheme()" title="화면 모드 전환"><span id="theme-label" style="font-size:17px;line-height:1">🌙</span></button><span class="rolebadge" id="u-role"></span><span class="uname" id="u-name"></span><button class="logout" onclick="logout()">로그아웃</button></div>
   </div>
   <div class="navtabs" id="navtabs"></div>
   <div class="wrap">
@@ -569,6 +569,8 @@
       </div>
       <div class="card" style="margin-top:16px"><label class="fld"><span>💳 학원비 납부 요청</span><textarea class="in" id="t-tuition" style="min-height:200px"></textarea></label></div>
       <div class="card" style="margin-top:16px"><label class="fld"><span>🍽 급식비 안내</span><textarea class="in" id="t-meal" style="min-height:150px"></textarea></label></div>
+      <div class="card" style="margin-top:16px"><label class="fld"><span>⚠️ 학원비 미납 요청</span><textarea class="in" id="t-tuitionUnpaid" style="min-height:160px"></textarea></label></div>
+      <div class="card" style="margin-top:16px"><label class="fld"><span>⚠️ 급식비 미납 안내</span><textarea class="in" id="t-mealUnpaid" style="min-height:150px"></textarea></label></div>
       <button class="btn primary" style="margin-top:16px" onclick="saveTemplates()">기본 메시지 저장</button>
       <button class="btn ghost" style="margin-top:16px;margin-left:8px" onclick="resetTemplates()">초기 양식으로 복원</button>
     </div>
@@ -748,6 +750,14 @@
   </div>
 </div>
 
+<!-- MODAL: 식사 달력 -->
+<div id="mealCalModal" onclick="if(event.target===this)closeMealCal()">
+  <div class="modal-box" style="max-width:540px">
+    <div class="modal-head"><div><div class="mh-name" id="mc-name">식사 달력</div><div class="mh-sub" id="mc-sub">—</div></div><button class="modal-x" onclick="closeMealCal()">✕</button></div>
+    <div class="modal-body"><div id="mc-cal" style="overflow-x:auto"></div><div class="demo-note" style="margin-top:10px">🍚 점심 · 🍱 저녁</div></div>
+  </div>
+</div>
+
 <!-- MODAL: 컨텐츠 팝업 -->
 <div id="contentPopup" onclick="if(event.target===this)closeContentPopup()">
   <div class="modal-box" style="max-width:460px">
@@ -857,7 +867,9 @@ function seed(){
       attendIn:'[이름]님이 [시간]에 등원 하였습니다.',
       attendOut:'[이름]님이 [시간]에 하원 하였습니다.',
       tuition:'[학원비 미납]PK대치 독학재수 학원입니다.\n[이름] 학생 학원비가 미납되어 연락드립니다.\n\n[이름] 학생 학원비는 [학원비]원으로 납부일은 [납부월]월 [수납일]일입니다.\n\n결제는 카드,시루,계좌이체 모두 가능합니다.\n*계좌이체시 입금자명은 학생 이름으로 변경하여, \n국민 285301-00-109125 [PK대치스파르타]로 입금 부탁드립니다.\n*계좌나 시루결제시 입금자명이 학생과 다르거나\n이미 입금하신 경우, 해당번호로 (입금일자/입금자명/입금금액/계좌OR시루) 문자 회신 부탁드립니다.\n\n감사합니다.',
-      meal:'[급식비] PK대치 독학재수 학원입니다.\n[이름] 학생 [급식월]월 [반기]반기 급식비는 [급식비]원입니다.(계좌이체만 가능)\n\n입금자명은 학생이름으로 변경 후,\n카카오뱅크 3333-26-5065183 [김나영]으로 입금 부탁드립니다.\n\n감사합니다.'
+      meal:'[급식비] PK대치 독학재수 학원입니다.\n[이름] 학생 [급식월]월 [반기]반기 급식비는 [급식비]원입니다.(계좌이체만 가능)\n\n입금자명은 학생이름으로 변경 후,\n카카오뱅크 3333-26-5065183 [김나영]으로 입금 부탁드립니다.\n\n감사합니다.',
+      tuitionUnpaid:'[학원비 미납 안내] PK대치 독학재수 학원입니다.\n[이름] 학생 [납부월]월 학원비 [학원비]원이 아직 미납되어 안내드립니다.\n빠른 납부 부탁드립니다.\n\n결제는 카드·시루·계좌이체 모두 가능합니다.\n국민 285301-00-109125 [PK대치스파르타]\n\n감사합니다.',
+      mealUnpaid:'[급식비 미납 안내] PK대치 독학재수 학원입니다.\n[이름] 학생 [급식월]월 급식비 [급식비]원이 아직 미납되어 안내드립니다.\n계좌이체 부탁드립니다.\n카카오뱅크 3333-26-5065183 [김나영]\n\n감사합니다.'
     }
   };
   LS.set(db);
@@ -904,7 +916,7 @@ if(!DB.shifts){DB.shifts=[
   {day:'화',teacher:'심낙범',start:13,end:18},{day:'화',teacher:'권다은',start:19,end:23},
   {day:'수',teacher:'심낙범',start:10,end:12},{day:'수',teacher:'방준현',start:13,end:18},{day:'수',teacher:'조성우',start:19,end:23},
   {day:'목',teacher:'권다은',start:10,end:13},{day:'목',teacher:'심낙범',start:14,end:18},{day:'목',teacher:'조성우',start:19,end:23},
-  {day:'금',teacher:'최성현',start:13,end:18},{day:'금',teacher:'심낙범',start:19,end:23},
+  {day:'금',teacher:'이수윤',start:13,end:18},{day:'금',teacher:'심낙범',start:19,end:23},
   {day:'토',teacher:'심낙범',start:10,end:13},{day:'토',teacher:'김진아',start:19,end:22}
 ];}
 // DM / 질문 / 컨텐츠
@@ -1431,7 +1443,7 @@ function bkSend(){
   closeBulk();clearSel();
 }
 function renderMeals(){const t=todayStr();document.getElementById('meal-date').textContent=new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'})+' 기준';const applied=DB.students.map(s=>({s,m:mealOf(s.id,t)}));document.getElementById('m-lunch').textContent=applied.filter(x=>x.m&&x.m.lunch).length;document.getElementById('m-dinner').textContent=applied.filter(x=>x.m&&x.m.dinner).length;document.getElementById('m-none').textContent=applied.filter(x=>!x.m||(!x.m.lunch&&!x.m.dinner)).length;const yes='<span class="pill done">신청</span>',no='<span class="pill none">—</span>';document.getElementById('m-list').innerHTML=applied.map(({s,m})=>`<tr><td><b>${s.name}</b></td><td><span class="gradetag">${s.grade||'—'}</span></td><td>${m&&m.lunch?yes:no}</td><td>${m&&m.dinner?yes:no}</td></tr>`).join('');
-  const ml=document.getElementById('m-month-list');if(ml){ml.innerHTML=DB.students.map(s=>{const mm=monthMeals(s.id);return `<tr><td><b>${s.name}</b></td><td><span class="gradetag">${s.grade||'—'}</span></td><td>${mm.lunch}회</td><td>${mm.dinner}회</td><td><b>${mm.lunch+mm.dinner}회</b></td><td>${won(mm.fee)}</td></tr>`;}).join('')||'<tr><td colspan="6" class="empty">원생이 없습니다</td></tr>';}
+  const ml=document.getElementById('m-month-list');if(ml){ml.innerHTML=DB.students.filter(s=>s.status!=='withdrawn').map(s=>{const mm=monthMeals(s.id);return `<tr><td><span class="name-link" onclick="openMealCal(${s.id})">${s.name}</span></td><td><span class="gradetag">${s.grade||'—'}</span></td><td>${mm.lunch}회</td><td>${mm.dinner}회</td><td><b>${mm.lunch+mm.dinner}회</b></td><td>${won(mm.fee)}</td></tr>`;}).join('')||'<tr><td colspan="6" class="empty">원생이 없습니다</td></tr>';}
 }
 function renderCounsel(){const t=todayStr();const act=canCounsel();const due=DB.students.filter(s=>s.counselDue<=t);document.getElementById('c-due-count').textContent=`${due.length}명 대기`;document.getElementById('c-act-th').textContent=act?'처리':'상태';document.getElementById('c-due').innerHTML=due.length?due.map(s=>`<tr><td><b>${s.name}</b></td><td>${s.lastCounsel||'첫 상담'}</td><td>${act?`<button class="btn in sm" onclick="counselDone(${s.id})">완료</button> <button class="btn sm ghost" onclick="counselDefer(${s.id})">내일로</button>`:'<span class="pill due">상담 필요</span>'}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">오늘 상담할 학생이 없습니다 ✨</td></tr>';document.getElementById('c-all').innerHTML=DB.students.map(s=>{const o=s.counselDue<=t;return `<tr><td><b>${s.name}</b></td><td>${s.lastCounsel||'—'}</td><td>${s.counselDue}</td><td>${o?'<span class="pill due">상담 필요</span>':'<span class="pill done">완료</span>'}</td></tr>`}).join('')}
 function renderAttendance(){const q=(document.getElementById('att-search').value||'').trim();const list=DB.students.filter(s=>!q||s.name.includes(q));document.getElementById('att-list').innerHTML=list.length?list.map(s=>`<tr><td><b>${s.name}</b></td><td><span class="gradetag">${s.grade||'—'}</span></td><td>${statusPill(status(s.id))}</td><td><button class="btn in sm" onclick="mark(${s.id},'IN')">등원</button> <button class="btn out sm" onclick="mark(${s.id},'OUT')">하원</button></td></tr>`).join(''):'<tr><td colspan="4" class="empty">검색 결과 없음</td></tr>'}
@@ -1485,9 +1497,9 @@ async function delAnnual(id){
   else{DB.annual=DB.annual.filter(x=>x.id!==id);save();}
   renderBoard();toast('🗑 일정 삭제','일정을 삭제했습니다.','var(--out)')}
 function canEditSched(){return me.role==='master'||me.role==='director'||me.role==='counter'}
-const SHIFT_COLORS={'방준현':'#c7d2fe','권다은':'#bbf7d0','심낙범':'#fde68a','조성우':'#bae6fd','최성현':'#fbcfe8','김진아':'#fed7aa'};
+const SHIFT_COLORS={'방준현':'#c7d2fe','권다은':'#bbf7d0','심낙범':'#fde68a','조성우':'#bae6fd','이수윤':'#fbcfe8','김진아':'#fed7aa'};
 function teacherColor(t){return SHIFT_COLORS[t]||'#d1d5db'}
-const SCHED_TEACHERS=['권다은','심낙범','방준현','조성우','최성현'];
+const SCHED_TEACHERS=['권다은','심낙범','방준현','조성우','이수윤'];
 let schedTeacher='방준현',schedErase=false;
 function setSchedTeacher(t){schedTeacher=t;schedErase=false;renderStaffSched()}
 function setSchedErase(){schedErase=true;schedTeacher=null;renderStaffSched()}
@@ -1617,6 +1629,19 @@ function openContentApps(cid){const c=DB.contents.find(x=>x.id===cid);if(!c)retu
   document.getElementById('appsModal').classList.add('show');
 }
 function closeApps(){document.getElementById('appsModal').classList.remove('show')}
+function openMealCal(sid){const s=studentById(sid);if(!s)return;
+  document.getElementById('mc-name').textContent=s.name+' 식사 달력';
+  const mm=monthMeals(sid);const now=new Date(),y=now.getFullYear(),m=now.getMonth()+1;
+  document.getElementById('mc-sub').textContent=`${m}월 · 점심 ${mm.lunch}회 · 저녁 ${mm.dinner}회 · ${won(mm.fee)}`;
+  const last=new Date(y,m,0).getDate(),first=new Date(y,m-1,1).getDay(),WD=['일','월','화','수','목','금','토'];
+  let h='<table class="cal-tbl"><thead><tr>'+WD.map((w,i)=>`<th class="${i===0?'sun':''}">${w}</th>`).join('')+'</tr></thead><tbody><tr>';
+  for(let i=0;i<first;i++)h+='<td class="cal-empty"></td>';let col=first;
+  for(let d=1;d<=last;d++){if(col===7){h+='</tr><tr>';col=0;}const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const mo=mealOf(sid,ds);const marks=((mo&&mo.lunch)?'🍚':'')+((mo&&mo.dinner)?'🍱':'');const wd=new Date(y,m-1,d).getDay();h+=`<td class="cal-cell ${wd===0?'sun':''}"><div class="cal-d">${d}</div><div style="font-size:15px;text-align:center;margin-top:3px;min-height:20px">${marks||'<span style="color:var(--faint);font-size:11px">·</span>'}</div></td>`;col++;}
+  while(col<7){h+='<td class="cal-empty"></td>';col++;}h+='</tr></tbody></table>';
+  document.getElementById('mc-cal').innerHTML=h;
+  document.getElementById('mealCalModal').classList.add('show');
+}
+function closeMealCal(){document.getElementById('mealCalModal').classList.remove('show')}
 function showContentPopup(){
   const pops=DB.contents.filter(c=>c.popup);if(!pops.length)return;
   const c=pops[pops.length-1];
@@ -1722,12 +1747,12 @@ async function toggleMeal(kind){const s=studentById(me.sid);if(!s)return;
 function notifyParent(sid,type){const s=studentById(sid);const tpl=type==='IN'?DB.templates.attendIn:DB.templates.attendOut;const msg=applyTpl(tpl,s,{time:nowTime()});toast(`📩 학부모 자동문자 <span class="sms-tag">${s.parent||'번호없음'}</span>`,msg,type==='IN'?'var(--in)':'var(--out)')}
 
 /* ===== templates settings ===== */
-function renderTemplates(){['attendIn','attendOut','tuition','meal'].forEach(k=>{document.getElementById('t-'+k).value=DB.templates[k]||''})}
-async function saveTemplates(){['attendIn','attendOut','tuition','meal'].forEach(k=>{DB.templates[k]=document.getElementById('t-'+k).value});
+function renderTemplates(){['attendIn','attendOut','tuition','meal','tuitionUnpaid','mealUnpaid'].forEach(k=>{document.getElementById('t-'+k).value=DB.templates[k]||''})}
+async function saveTemplates(){['attendIn','attendOut','tuition','meal','tuitionUnpaid','mealUnpaid'].forEach(k=>{DB.templates[k]=document.getElementById('t-'+k).value});
   if(sb&&me&&me.real){const {error}=await sb.from('settings').upsert({key:'templates',value:DB.templates});if(error){toast('❌ 저장 실패',error.message,'var(--warn)');return}}
   else{save();}
   toast('💾 저장 완료','기본 메시지 양식을 저장했습니다.','var(--brand)')}
-async function resetTemplates(){store.removeItem('ce_tpl_done');DB.templates={attendIn:'[이름]님이 [시간]에 등원 하였습니다.',attendOut:'[이름]님이 [시간]에 하원 하였습니다.',tuition:'[학원비 미납]PK대치 독학재수 학원입니다.\n[이름] 학생 학원비가 미납되어 연락드립니다.\n\n[이름] 학생 학원비는 [학원비]원으로 납부일은 [납부월]월 [수납일]일입니다.\n\n결제는 카드,시루,계좌이체 모두 가능합니다.\n*계좌이체시 입금자명은 학생 이름으로 변경하여, \n국민 285301-00-109125 [PK대치스파르타]로 입금 부탁드립니다.\n*계좌나 시루결제시 입금자명이 학생과 다르거나\n이미 입금하신 경우, 해당번호로 (입금일자/입금자명/입금금액/계좌OR시루) 문자 회신 부탁드립니다.\n\n감사합니다.',meal:'[급식비] PK대치 독학재수 학원입니다.\n[이름] 학생 [급식월]월 [반기]반기 급식비는 [급식비]원입니다.(계좌이체만 가능)\n\n입금자명은 학생이름으로 변경 후,\n카카오뱅크 3333-26-5065183 [김나영]으로 입금 부탁드립니다.\n\n감사합니다.'};if(sb&&me&&me.real){await sb.from('settings').upsert({key:'templates',value:DB.templates});}else{save();}renderTemplates();toast('↩️ 복원','초기 양식으로 되돌렸습니다.','var(--out)')}
+async function resetTemplates(){store.removeItem('ce_tpl_done');DB.templates={attendIn:'[이름]님이 [시간]에 등원 하였습니다.',attendOut:'[이름]님이 [시간]에 하원 하였습니다.',tuition:'[학원비 미납]PK대치 독학재수 학원입니다.\n[이름] 학생 학원비가 미납되어 연락드립니다.\n\n[이름] 학생 학원비는 [학원비]원으로 납부일은 [납부월]월 [수납일]일입니다.\n\n결제는 카드,시루,계좌이체 모두 가능합니다.\n*계좌이체시 입금자명은 학생 이름으로 변경하여, \n국민 285301-00-109125 [PK대치스파르타]로 입금 부탁드립니다.\n*계좌나 시루결제시 입금자명이 학생과 다르거나\n이미 입금하신 경우, 해당번호로 (입금일자/입금자명/입금금액/계좌OR시루) 문자 회신 부탁드립니다.\n\n감사합니다.',meal:'[급식비] PK대치 독학재수 학원입니다.\n[이름] 학생 [급식월]월 [반기]반기 급식비는 [급식비]원입니다.(계좌이체만 가능)\n\n입금자명은 학생이름으로 변경 후,\n카카오뱅크 3333-26-5065183 [김나영]으로 입금 부탁드립니다.\n\n감사합니다.',tuitionUnpaid:'[학원비 미납 안내] PK대치 독학재수 학원입니다.\n[이름] 학생 [납부월]월 학원비 [학원비]원이 아직 미납되어 안내드립니다.\n빠른 납부 부탁드립니다.\n\n결제는 카드·시루·계좌이체 모두 가능합니다.\n국민 285301-00-109125 [PK대치스파르타]\n\n감사합니다.',mealUnpaid:'[급식비 미납 안내] PK대치 독학재수 학원입니다.\n[이름] 학생 [급식월]월 급식비 [급식비]원이 아직 미납되어 안내드립니다.\n계좌이체 부탁드립니다.\n카카오뱅크 3333-26-5065183 [김나영]\n\n감사합니다.'};if(sb&&me&&me.real){await sb.from('settings').upsert({key:'templates',value:DB.templates});}else{save();}renderTemplates();toast('↩️ 복원','초기 양식으로 되돌렸습니다.','var(--out)')}
 
 /* ============ STUDENT DETAIL MODAL ============ */
 let mdSid=null;
@@ -1780,6 +1805,8 @@ function openStudent(sid){mdSid=sid;const s=studentById(sid);document.getElement
       <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px">
         <button class="btn sm" onclick="fillMsg('tuition')">💳 학원비 납부요청</button>
         <button class="btn sm" onclick="fillMsg('meal')">🍽 급식비 안내</button>
+        <button class="btn sm" onclick="fillMsg('tuitionUnpaid')">⚠️ 학원비 미납</button>
+        <button class="btn sm" onclick="fillMsg('mealUnpaid')">⚠️ 급식비 미납</button>
         <button class="btn sm ghost" onclick="document.getElementById('md-msg').value=''">직접 작성</button>
       </div>
       <textarea class="in" id="md-msg" style="min-height:150px" placeholder="버튼으로 양식을 불러오거나 직접 입력하세요"></textarea>
@@ -1899,7 +1926,7 @@ function printSchedule(){
 }
 
 /* ============ theme ============ */
-function applyTheme(t){const light=t==='light';document.body.classList.toggle('light',light);['theme-label','theme-label-login'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=light?'🌙':'☀️';});try{store.setItem('ce_theme',t)}catch(e){}}
+function applyTheme(t){const light=t==='light';document.body.classList.toggle('light',light);['theme-label','theme-label-login'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=light?'☀️':'🌙';});try{store.setItem('ce_theme',t)}catch(e){}}
 function toggleTheme(){applyTheme(document.body.classList.contains('light')?'dark':'light');}
 
 /* ============ boot ============ */
