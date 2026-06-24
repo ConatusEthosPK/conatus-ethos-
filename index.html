@@ -354,6 +354,12 @@
   .rpt-live{color:var(--in);font-weight:700}
   /* 월간 스케줄표 (달력) */
   .sch-setup2{display:grid;grid-template-columns:56px 1fr 130px;gap:6px;align-items:center;margin-bottom:6px}
+  .sch-item{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;padding:8px 10px;border:1px solid var(--line);border-radius:10px}
+  .sch-item .si-text{flex:1;min-width:130px}
+  .si-days{display:flex;gap:3px;flex-wrap:wrap}
+  .si-day{font-size:11px;padding:4px 7px;border:1px solid var(--line);border-radius:7px;cursor:pointer;color:var(--muted);user-select:none}
+  .si-day input{display:none}
+  .si-day.on{background:var(--brand-soft);color:var(--brand);border-color:var(--brand);font-weight:700}
   .sch-setup2 .sublbl{font-size:12.5px;font-weight:700;color:var(--ink)}
   .sch-head{margin-bottom:12px}
   .sch-title{font-size:17px;font-weight:800}
@@ -421,7 +427,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v72 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v73 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -468,13 +474,9 @@
           <label class="fld"><span>학생</span><select class="in" id="msch-student"></select></label>
           <label class="fld"><span>시작일 (기본: 내일부터 30일)</span><input class="in" type="date" id="msch-start" onchange="buildScheduleTable()"></label>
         </div>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin:4px 0 12px;cursor:pointer"><input type="checkbox" id="msch-skipsun" checked style="width:16px;height:16px">일요일은 휴식(채우지 않음)</label>
-        <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">과목별 <b>하루 학습 시간</b>을 입력하세요 (국·수·영·탐 순). 교재명은 선택, 비워둔 과목은 제외됩니다.</div>
-        <div class="sch-setup2" style="margin-bottom:4px;color:var(--faint);font-size:11px"><span></span><span>교재 (선택)</span><span>하루 학습시간</span></div>
-        <div class="sch-setup2"><span class="sublbl">국어</span><input class="in" id="msch-book-kor" placeholder="교재명(선택)"><input class="in" id="msch-hrs-kor" type="number" placeholder="시간"></div>
-        <div class="sch-setup2"><span class="sublbl">수학</span><input class="in" id="msch-book-mat" placeholder="교재명(선택)"><input class="in" id="msch-hrs-mat" type="number" placeholder="시간"></div>
-        <div class="sch-setup2"><span class="sublbl">영어</span><input class="in" id="msch-book-eng" placeholder="교재명(선택)"><input class="in" id="msch-hrs-eng" type="number" placeholder="시간"></div>
-        <div class="sch-setup2"><span class="sublbl">탐구</span><input class="in" id="msch-book-tam" placeholder="교재명(선택)"><input class="in" id="msch-hrs-tam" type="number" placeholder="시간"></div>
+        <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">항목마다 <b>과목/내용</b>, <b>요일</b>(중복 선택 가능), <b>분량</b>(시간 또는 강)을 정하세요. 예: 탐구 — 월·수·금 생활과윤리, 화·목·금 사회문화.</div>
+        <div id="sch-items"></div>
+        <button class="btn ghost sm" onclick="addSchItem()" style="margin-top:6px">＋ 항목 추가</button>
         <div style="display:flex;gap:8px;margin-top:14px">
           <button class="btn primary" onclick="genSchedule()">🗓 자동 채우기</button>
           <button class="btn ghost" onclick="buildScheduleTable()">비우기</button>
@@ -2089,8 +2091,18 @@ function renderSchedule(){
   const sel=document.getElementById('msch-student');
   if(sel){const cur=sel.value;sel.innerHTML='<option value="">학생 선택</option>'+DB.students.filter(s=>s.status!=='withdrawn').sort((a,b)=>(a.name||'').localeCompare(b.name||'','ko')).map(s=>`<option value="${s.id}">${s.name}${s.grade?' ('+s.grade+')':''}</option>`).join('');if(cur)sel.value=cur;}
   const st=document.getElementById('msch-start');if(st&&!st.value){const d=new Date();d.setDate(d.getDate()+1);st.value=fmtDate(d);}
+  ensureSchItems();
   if(!document.querySelector('#msch-table table'))buildScheduleTable();
 }
+const SCH_WD=['월','화','수','목','금','토','일'];
+function schItemRowHTML(text,days,amt,unit){days=days||[];return `<div class="sch-item">
+  <input class="in si-text" placeholder="과목/내용 (예: 생활과윤리)" value="${esc(text||'')}">
+  <div class="si-days">${SCH_WD.map(d=>`<label class="si-day ${days.includes(d)?'on':''}"><input type="checkbox" value="${d}" ${days.includes(d)?'checked':''} onchange="this.parentNode.classList.toggle('on',this.checked)">${d}</label>`).join('')}</div>
+  <input class="in si-amt" type="number" placeholder="분량" value="${amt!=null?amt:''}" style="width:70px">
+  <select class="in si-unit" style="width:74px"><option ${unit==='강'?'':'selected'}>시간</option><option ${unit==='강'?'selected':''}>강</option></select>
+  <button class="btn sm ghost" onclick="this.closest('.sch-item').remove()">✕</button></div>`;}
+function addSchItem(text,days,amt,unit){const c=document.getElementById('sch-items');if(c)c.insertAdjacentHTML('beforeend',schItemRowHTML(text,days,amt,unit));}
+function ensureSchItems(){const c=document.getElementById('sch-items');if(c&&!c.children.length){['국어','수학','영어','탐구'].forEach(t=>addSchItem(t,['월','화','수','목','금'],'','시간'));}}
 function buildScheduleTable(contentFn){
   const box=document.getElementById('msch-table');if(!box)return;
   const start=schedStartDate();const DAYS=30;const end=new Date(start);end.setDate(end.getDate()+DAYS-1);
@@ -2110,12 +2122,15 @@ function buildScheduleTable(contentFn){
   h+='</tbody></table>';box.innerHTML=h;
 }
 function genSchedule(){
-  const skipSun=document.getElementById('msch-skipsun').checked;
-  const cfg=SCH_SUBJECTS.map(s=>({label:s[1],book:val('msch-book-'+s[0]),hrs:val('msch-hrs-'+s[0])}));
-  if(!cfg.some(c=>c.hrs)){toast('⚠️ 입력 필요','과목별 하루 학습 시간을 1개 이상 입력하세요.','var(--warn)');return;}
-  const line=cfg.filter(c=>c.hrs).map(c=>`${c.label} ${c.book?c.book+' ':''}${c.hrs}시간`).join('\n');
-  buildScheduleTable((date)=>(skipSun&&date.getDay()===0)?'휴식':line);
-  toast('🗓 달력 생성','시작일부터 한 달 일정을 채웠어요. 칸을 눌러 수정할 수 있어요.','var(--brand)');
+  const items=[...document.querySelectorAll('#sch-items .sch-item')].map(row=>({
+    text:row.querySelector('.si-text').value.trim(),
+    days:[...row.querySelectorAll('.si-days input:checked')].map(c=>c.value),
+    amt:row.querySelector('.si-amt').value.trim(),
+    unit:row.querySelector('.si-unit').value
+  })).filter(it=>it.text&&it.days.length);
+  if(!items.length){toast('⚠️ 입력 필요','과목·요일을 1개 이상 입력하세요.','var(--warn)');return;}
+  buildScheduleTable((date)=>{const wd=SCH_WD[(date.getDay()+6)%7];const todays=items.filter(it=>it.days.includes(wd));return todays.length?todays.map(it=>`${it.text}${it.amt?(' '+it.amt+it.unit):''}`).join('\n'):'';});
+  toast('🗓 달력 생성','요일별로 채웠어요. 칸을 눌러 수정할 수 있어요.','var(--brand)');
 }
 function printSchedule(){
   if(!document.querySelector('#msch-table table')){toast('⚠️ 표 없음','먼저 표를 만들어주세요.','var(--warn)');return;}
