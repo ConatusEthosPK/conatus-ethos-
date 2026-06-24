@@ -441,7 +441,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v82 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v83 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -1696,8 +1696,14 @@ function renderAttendance(){const q=(document.getElementById('att-search').value
   html+=staff.map(u=>`<tr style="background:var(--brand-soft)"><td><b>${u.name}</b> <span style="font-size:10px;color:var(--brand)">직원</span></td><td>등원 ${staffTimeOf(u.name,'IN')} · 하원 ${staffTimeOf(u.name,'OUT')}<br>${statusPill(staffStatus(u.name))}</td><td>${attTimePicker('s_'+u.name)}</td><td><button class="btn in sm" onclick="markStaff('${u.name}','IN')">등원</button> <button class="btn out sm" onclick="markStaff('${u.name}','OUT')">하원</button></td></tr>`).join('');
   document.getElementById('att-list').innerHTML=html||'<tr><td colspan="4" class="empty">검색 결과 없음</td></tr>';}
 function renderUsers(){const roles=['master','director','assistant','counter','student','parent'];document.getElementById('u-list').innerHTML=DB.users.filter(u=>u.role!=='kiosk').map(u=>{const isMe=String(u.id)===String(me.id);const sel=`<select class="rolesel" ${isMe?'disabled':''} onchange="changeRole('${u.id}',this.value)">`+roles.map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${ROLE_LABEL[r]}</option>`).join('')+`</select>`;const linkSel=(u.role==='student'||u.role==='parent')?`<div style="margin-top:6px"><select class="rolesel" onchange="linkStudent('${u.id}',this.value)"><option value="">원생 연결 안함</option>${DB.students.map(s=>`<option value="${s.id}" ${String(u.sid)===String(s.id)?'selected':''}>${s.name}</option>`).join('')}</select></div>`:'';return `<tr><td><b>${u.name}</b>${isMe?' <span style="color:var(--gold);font-size:11px">(나)</span>':''}</td><td style="color:var(--muted)">${u.email}</td><td><span class="rolebadge ${u.role}">${ROLE_LABEL[u.role]}</span></td><td>${isMe?'<span style="color:var(--faint);font-size:12px">최상위 · 변경 불가</span>':sel}${linkSel}</td></tr>`}).join('')}
-function renderStaff(){const roles=['master','director','assistant','counter'];const staff=DB.users.filter(u=>roles.includes(u.role));
-  document.getElementById('staff-list').innerHTML=staff.length?staff.map(u=>{const isMe=String(u.id)===String(me.id);const canEdit=me.role==='master'&&!isMe;const ctrl=canEdit?`<select class="rolesel" onchange="changeRole('${u.id}',this.value)">`+roles.map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${ROLE_LABEL[r]}</option>`).join('')+`</select>`:(isMe?'<span style="color:var(--gold);font-size:12px">본인</span>':'<span style="color:var(--faint);font-size:12px">마스터만 변경</span>');return `<tr><td><span class="name-link" onclick="openStaff('${u.id}')">${u.name}</span></td><td><span class="rolebadge ${u.role}">${ROLE_LABEL[u.role]}</span></td><td style="color:var(--muted)">${staffPhone(u)||'—'}</td><td>${ctrl}</td></tr>`;}).join(''):'<tr><td colspan="4" class="empty">직원이 없습니다</td></tr>';}
+function renderStaff(){const allRoles=['master','director','assistant','counter'];const staff=DB.users.filter(u=>allRoles.includes(u.role));
+  const manager=['master','director','counter'].includes(me.role);
+  document.getElementById('staff-list').innerHTML=staff.length?staff.map(u=>{const isMe=String(u.id)===String(me.id);
+    // 마스터 계정은 마스터만 변경 가능. 일반 직원은 원장·카운터·마스터가 변경 가능. 본인은 변경 불가.
+    const canEdit=manager&&!isMe&&!(u.role==='master'&&me.role!=='master');
+    const roleOpts=(me.role==='master'?allRoles:['director','assistant','counter']);
+    const ctrl=canEdit?`<select class="rolesel" onchange="changeRole('${u.id}',this.value)">`+roleOpts.map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${ROLE_LABEL[r]}</option>`).join('')+`</select>`:(isMe?'<span style="color:var(--gold);font-size:12px">본인</span>':'<span style="color:var(--faint);font-size:12px">변경 불가</span>');
+    return `<tr><td><span class="name-link" onclick="openStaff('${u.id}')">${u.name}</span></td><td><span class="rolebadge ${u.role}">${ROLE_LABEL[u.role]}</span></td><td style="color:var(--muted)">${staffPhone(u)||'—'}</td><td>${ctrl}</td></tr>`;}).join(''):'<tr><td colspan="4" class="empty">직원이 없습니다</td></tr>';}
 function openStaff(uid){const u=DB.users.find(x=>String(x.id)===String(uid));if(!u)return;
   const logs=DB.staffAttend.filter(a=>a.name===u.name).slice().reverse().slice(0,20);
   const hm=staffHalfMeals(u.name),mm=(()=>{const pre=todayStr().slice(0,7)+'-';let l=0,d=0;DB.staffMeals.forEach(x=>{if(x.name===u.name&&x.date.startsWith(pre)){if(x.lunch)l++;if(x.dinner)d++}});return{l,d};})();
