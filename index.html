@@ -132,7 +132,8 @@
   input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
   input[type=number]{-moz-appearance:textfield;appearance:textfield}
   textarea.in{resize:vertical;min-height:64px}
-  .exhead,.exrow{display:grid;grid-template-columns:40px minmax(0,1.5fr) 1fr 1fr 1fr;gap:6px;align-items:center}
+  .exwrap{overflow-x:auto}
+  .exhead,.exrow{display:grid;grid-template-columns:38px minmax(120px,1.4fr) repeat(4,minmax(64px,1fr));gap:6px;align-items:center;min-width:520px}
   .exhead{margin:2px 0 5px;font-size:10.5px;color:var(--muted);text-align:center}
   .exhead span:nth-child(1),.exhead span:nth-child(2){text-align:left}
   .exrow{margin-bottom:6px}
@@ -420,7 +421,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v71 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v72 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -1013,6 +1014,7 @@ const EXAM_SUBJECTS=[
   {key:'kor',label:'국어',opts:['언어와매체','화법과작문']},
   {key:'mat',label:'수학',opts:['확률과통계','미적분','기하']},
   {key:'eng',label:'영어',opts:null},
+  {key:'his',label:'한국사',opts:null},
   {key:'t1',label:'탐구1',opts:'tamgu'},
   {key:'t2',label:'탐구2',opts:'tamgu'},
 ];
@@ -1021,21 +1023,21 @@ function tamguOptions(sel){return `<optgroup label="사회탐구">`+TAMGU_SOC.ma
 function examBlockHTML(p){
   const rows=EXAM_SUBJECTS.map(s=>{
     let subCell;
-    if(s.opts==null)subCell=`<div class="exsub-fixed">영어</div>`;
+    if(s.opts==null)subCell=`<div class="exsub-fixed">${s.label}</div>`;
     else if(s.opts==='tamgu')subCell=`<select class="in exsub" id="${p}-sub-${s.key}"><option value="">탐구 선택</option>${tamguOptions()}</select>`;
     else subCell=`<select class="in exsub" id="${p}-sub-${s.key}"><option value="">선택</option>${s.opts.map(o=>`<option>${o}</option>`).join('')}</select>`;
-    return `<div class="exrow"><div class="exlbl">${s.label}</div>${subCell}<input class="in exnum" id="${p}-raw-${s.key}" type="number" placeholder="원점수"><input class="in exnum" id="${p}-pct-${s.key}" type="number" placeholder="백분위"><input class="in exnum" id="${p}-rnk-${s.key}" type="number" placeholder="등급"></div>`;
+    return `<div class="exrow"><div class="exlbl">${s.label}</div>${subCell}<input class="in exnum" id="${p}-raw-${s.key}" type="number" placeholder="원점수"><input class="in exnum" id="${p}-std-${s.key}" type="number" placeholder="표준점수"><input class="in exnum" id="${p}-pct-${s.key}" type="number" placeholder="백분위"><input class="in exnum" id="${p}-rnk-${s.key}" type="number" placeholder="등급"></div>`;
   }).join('');
-  return `<select class="in" id="${p}-exam" style="margin-bottom:8px"><option value="">시험 선택</option>${examNameOptions()}</select><div class="exhead"><span></span><span></span><span>원점수</span><span>백분위</span><span>등급</span></div>${rows}`;
+  return `<select class="in" id="${p}-exam" style="margin-bottom:8px"><option value="">시험 선택</option>${examNameOptions()}</select><div class="exwrap"><div class="exhead"><span></span><span></span><span>원점수</span><span>표준점수</span><span>백분위</span><span>등급</span></div>${rows}</div>`;
 }
 function collectExamGrades(p){
   const exam=val(p+'-exam');const rows=[];
   if(!exam)return {exam:'',rows};
   EXAM_SUBJECTS.forEach(s=>{
-    const raw=val(p+'-raw-'+s.key),pct=val(p+'-pct-'+s.key),rnk=val(p+'-rnk-'+s.key);
-    if(raw===''&&pct===''&&rnk==='')return;
-    const subject=s.opts==null?'영어':(val(p+'-sub-'+s.key)||s.label);
-    rows.push({subject,score:raw!==''?Number(raw):null,percentile:pct!==''?Number(pct):null,rank:rnk!==''?Number(rnk):null});
+    const raw=val(p+'-raw-'+s.key),std=val(p+'-std-'+s.key),pct=val(p+'-pct-'+s.key),rnk=val(p+'-rnk-'+s.key);
+    if(raw===''&&std===''&&pct===''&&rnk==='')return;
+    const subject=s.opts==null?s.label:(val(p+'-sub-'+s.key)||s.label);
+    rows.push({subject,score:raw!==''?Number(raw):null,std:std!==''?Number(std):null,percentile:pct!==''?Number(pct):null,rank:rnk!==''?Number(rnk):null});
   });
   return {exam,rows};
 }
@@ -1164,7 +1166,7 @@ async function loadStudents(){
     ]);
     if(st.data){
       DB.students=st.data.map(r=>({id:r.id,name:r.name,phone:r.phone||'',parent:r.parent_phone||'',school:r.school||'',grade:r.grade||'',gender:r.gender||'m',birth:r.birth||'',address:r.address||'',emergency:r.emergency||'',note:r.note||'',tuition:r.tuition||0,payDay:r.pay_day||5,mealFee:0,lastCounsel:r.last_counsel||null,counselDue:r.counsel_due||todayStr(),counselHist:[],grades:[],selfInfo:r.self_info||null,status:r.status||'active',paid:!!r.paid,paidAt:r.paid_at||null}));
-      if(gr.data)gr.data.forEach(g=>{const s=DB.students.find(x=>x.id===g.student_id);if(s)s.grades.push({date:g.date,exam:g.exam,subject:g.subject,score:g.score,percentile:g.percentile,rank:g.rank})});
+      if(gr.data)gr.data.forEach(g=>{const s=DB.students.find(x=>x.id===g.student_id);if(s)s.grades.push({date:g.date,exam:g.exam,subject:g.subject,score:g.score,std:g.std,percentile:g.percentile,rank:g.rank})});
       if(cl.data)cl.data.forEach(c=>{const s=DB.students.find(x=>x.id===c.student_id);if(s)s.counselHist.push(c.date)});
     }
   }catch(e){console.error('원생 로딩 실패',e);}
@@ -1239,7 +1241,7 @@ async function doSignup(){
     const newSid=ins.data?ins.data.id:null;
     if(newSid){
       await sb.from('profiles').update({student_id:newSid}).eq('id',data.user.id);
-      if(eg.exam&&eg.rows.length)await sb.from('grades').insert(eg.rows.map(r=>({student_id:newSid,date:todayStr(),exam:eg.exam,subject:r.subject,score:r.score,percentile:r.percentile,rank:r.rank})));
+      if(eg.exam&&eg.rows.length)await sb.from('grades').insert(eg.rows.map(r=>({student_id:newSid,date:todayStr(),exam:eg.exam,subject:r.subject,score:r.score,std:r.std,percentile:r.percentile,rank:r.rank})));
     }
   }catch(e){console.error('원생 자동생성 실패',e);}
   err.textContent='';toast('🎉 가입 완료',`${name} 님, 학생 계정으로 가입되었습니다.`,'var(--brand)');await enterReal(data.user);
@@ -1715,7 +1717,8 @@ const TEACHER_PROFILES=[
 let qTeacher=null;
 function setQTeacher(n){qTeacher=n;renderQuestions();}
 function parseHM(s){const m=(s||'').match(/(\d{1,2}):(\d{2})/);return m?(+m[1]*60+ +m[2]):null;}
-function isBreakTime(){const now=new Date();const cur=now.getHours()*60+now.getMinutes();return PK_TIMETABLE.some(r=>{if(!/쉬는|점심|저녁/.test(r[0]))return false;const p=(r[1]||'').split('~');if(p.length<2)return false;const a=parseHM(p[0]),b=parseHM(p[1]);return a!=null&&b!=null&&cur>=a&&cur<b;});}
+function isClassTime(){const now=new Date();const cur=now.getHours()*60+now.getMinutes();return PK_TIMETABLE.some(r=>{if(!/교시/.test(r[0]))return false;const p=(r[1]||'').split('~');if(p.length<2)return false;const a=parseHM(p[0]),b=parseHM(p[1]);return a!=null&&b!=null&&cur>=a&&cur<b;});}
+function canAskNow(){return !isClassTime();}
 let qPhotoData=null;
 function resizeImage(file,cb){const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>{const max=700;let w=img.width,h=img.height;if(w>max||h>max){if(w>h){h=Math.round(h*max/w);w=max}else{w=Math.round(w*max/h);h=max}}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);cb(c.toDataURL('image/jpeg',0.6))};img.src=e.target.result};r.readAsDataURL(file)}
 function qPhotoChange(input){const f=input.files&&input.files[0];if(!f)return;resizeImage(f,d=>{qPhotoData=d;const p=document.getElementById('q-photo-prev');p.src=d;p.style.display='block'})}
@@ -1741,10 +1744,10 @@ function renderQuestions(){
     document.getElementById('q-list').innerHTML='';
     return;
   }
-  const brk=isBreakTime();
+  const brk=canAskNow();
   document.getElementById('q-sub').innerHTML=`<button class="btn sm ghost" onclick="setQTeacher(null)">← 선생님 목록</button> &nbsp; <b>${qTeacher} 선생님</b>께 질문`;
   document.getElementById('q-form').innerHTML=`<div class="card" style="max-width:560px;margin-bottom:16px">
-    ${brk?'':'<div class="mismatch-note">⏰ 질문은 쉬는 시간에만 등록할 수 있어요. 지금은 수업/자습 시간입니다.</div>'}
+    ${brk?'':'<div class="mismatch-note">⏰ 수업(교시) 시간에는 질문을 등록할 수 없어요. 수업 외 시간에 등록해 주세요.</div>'}
     <div style="font-size:12px;color:var(--muted);margin-bottom:8px">담당: ${TEACHER_PROFILES.find(t=>t.name===qTeacher)?TEACHER_PROFILES.find(t=>t.name===qTeacher).intro:''}</div>
     <div class="grid g2" style="gap:8px"><input class="in" id="q-subject" placeholder="과목 (예: 수학 미적분)"><input class="in" id="q-seat" placeholder="좌석번호"></div>
     <textarea class="in" id="q-text" placeholder="질문 내용" style="min-height:70px;margin-top:8px"></textarea>
@@ -1754,7 +1757,7 @@ function renderQuestions(){
   const list=DB.questions.filter(q=>String(q.sid)===String(me.sid)&&q.teacher===qTeacher).slice().sort((a,b)=>b.ts-a.ts);
   document.getElementById('q-list').innerHTML=list.length?list.map(q=>qCardHTML(q,false)).join(''):'<div class="empty">이 선생님께 보낸 질문이 없습니다</div>';
 }
-async function postQuestion(){if(!isBreakTime()){toast('⏰ 질문 시간 아님','질문은 쉬는 시간에만 등록할 수 있어요.','var(--warn)');return}const subject=document.getElementById('q-subject').value.trim(),seat=document.getElementById('q-seat').value.trim(),text=document.getElementById('q-text').value.trim();if(!subject&&!text){toast('⚠️ 입력 필요','과목 또는 질문 내용을 입력하세요.','var(--warn)');return}const s=studentById(me.sid);const sname=s?s.name:me.name;
+async function postQuestion(){if(!canAskNow()){toast('⏰ 수업 시간','수업(교시) 시간에는 질문을 등록할 수 없어요.','var(--warn)');return}const subject=document.getElementById('q-subject').value.trim(),seat=document.getElementById('q-seat').value.trim(),text=document.getElementById('q-text').value.trim();if(!subject&&!text){toast('⚠️ 입력 필요','과목 또는 질문 내용을 입력하세요.','var(--warn)');return}const s=studentById(me.sid);const sname=s?s.name:me.name;
   if(sb&&me&&me.real){const {error}=await sb.from('questions').insert({student_id:me.sid||null,student_name:sname,subject,seat,desired_time:'',body:text,photo:qPhotoData,status:'대기',teacher:qTeacher});if(error){toast('❌ 등록 실패',error.message,'var(--warn)');return}qPhotoData=null;await loadQuestions();}
   else{DB.questions.push({id:Date.now(),sid:me.sid,student:sname,subject,seat,desiredTime:'',text,photo:qPhotoData,status:'대기',answer:'',teacher:qTeacher,ts:Date.now()});qPhotoData=null;save();}
   renderQuestions();toast('📝 질문 등록',`${qTeacher} 선생님께 질문이 전달되었습니다.`,'var(--brand)')}
@@ -1872,8 +1875,9 @@ function subjGroup(sub){if(['언어와매체','화법과작문'].includes(sub))r
 function openReport(sid,exam){const s=studentById(sid);const rows=((s&&s.grades)||[]).filter(x=>x.exam===exam);
   document.getElementById('rep-title').textContent=exam;
   document.getElementById('rep-name').textContent=(s?s.name:'')+(s&&s.grade?' · '+s.grade:'');
-  const body=rows.slice().sort((a,b)=>SUBJ_ORDER.indexOf(subjGroup(a.subject))-SUBJ_ORDER.indexOf(subjGroup(b.subject))).map(x=>`<tr><td style="text-align:left"><b>${subjGroup(x.subject)}</b><div style="font-size:10px;color:var(--muted)">${x.subject}</div></td><td>${x.score!=null&&x.score!==''?x.score:'-'}</td><td>${x.percentile!=null&&x.percentile!==''?x.percentile:'-'}</td><td><b>${x.rank!=null&&x.rank!==''?x.rank:'-'}</b></td></tr>`).join('');
-  document.getElementById('rep-body').innerHTML=`<table class="rep-tbl"><thead><tr><th style="text-align:left">영역</th><th>원점수</th><th>백분위</th><th>등급</th></tr></thead><tbody>${body||'<tr><td colspan=4 class=empty>과목 없음</td></tr>'}</tbody></table>`;
+  const v=x=>x!=null&&x!==''?x:'-';
+  const body=rows.slice().sort((a,b)=>SUBJ_ORDER.indexOf(subjGroup(a.subject))-SUBJ_ORDER.indexOf(subjGroup(b.subject))).map(x=>`<tr><td style="text-align:left"><b>${subjGroup(x.subject)}</b><div style="font-size:10px;color:var(--muted)">${x.subject}</div></td><td>${v(x.score)}</td><td>${v(x.std)}</td><td>${v(x.percentile)}</td><td><b>${v(x.rank)}</b></td></tr>`).join('');
+  document.getElementById('rep-body').innerHTML=`<div style="overflow-x:auto"><table class="rep-tbl"><thead><tr><th style="text-align:left">영역</th><th>원점수</th><th>표준점수</th><th>백분위</th><th>등급</th></tr></thead><tbody>${body||'<tr><td colspan=5 class=empty>과목 없음</td></tr>'}</tbody></table></div>`;
   document.getElementById('reportModal').classList.add('show');}
 function closeReport(){document.getElementById('reportModal').classList.remove('show');}
 function payItems(s){const mm=monthMeals(s.id);const M=new Date().getMonth()+1;return [
@@ -1923,8 +1927,8 @@ async function addStudent(){const name=val('f-name'),phone=val('f-phone');if(!na
   if(sb&&me&&me.real){const {error}=await sb.from('students').insert({name,phone,parent_phone:val('f-parent'),school:val('f-school'),grade:val('f-grade'),gender,tuition,pay_day:payDay,note:val('f-note'),counsel_due:todayStr()});if(error){toast('❌ 등록 실패',error.message,'var(--warn)');return}await loadStudents();const ns=DB.students.filter(x=>x.name===name&&x.phone===phone).slice(-1)[0];newSid=ns?ns.id:null;}
   else{newSid=DB.nextSid;DB.students.push({id:DB.nextSid++,name,phone,parent:val('f-parent'),school:val('f-school'),grade:val('f-grade'),gender,tuition,payDay,mealFee:0,note:val('f-note'),lastCounsel:null,counselDue:todayStr(),counselHist:[],grades:[]});save();}
   if(newSid&&eg.exam&&eg.rows.length){
-    if(sb&&me&&me.real){await sb.from('grades').insert(eg.rows.map(r=>({student_id:newSid,date:todayStr(),exam:eg.exam,subject:r.subject,score:r.score,percentile:r.percentile,rank:r.rank})));await loadStudents();}
-    else{const ns=studentById(newSid);if(ns){eg.rows.forEach(r=>(ns.grades=ns.grades||[]).push({date:todayStr(),exam:eg.exam,subject:r.subject,score:r.score,percentile:r.percentile,rank:r.rank}));save();}}
+    if(sb&&me&&me.real){await sb.from('grades').insert(eg.rows.map(r=>({student_id:newSid,date:todayStr(),exam:eg.exam,subject:r.subject,score:r.score,std:r.std,percentile:r.percentile,rank:r.rank})));await loadStudents();}
+    else{const ns=studentById(newSid);if(ns){eg.rows.forEach(r=>(ns.grades=ns.grades||[]).push({date:todayStr(),exam:eg.exam,subject:r.subject,score:r.score,std:r.std,percentile:r.percentile,rank:r.rank}));save();}}
   }
   if(seatId&&newSid)await assignStudentSeat(newSid,seatId);
   ['f-name','f-phone','f-parent','f-school','f-tuition','f-payday','f-note'].forEach(i=>document.getElementById(i).value='');const fs=document.getElementById('f-seat');if(fs)fs.value='';fillExamBlock('f-block',true);toast('🎉 원생 등록',`${name} 학생이 등록되었습니다.${seatId?' 자리도 배정했어요.':''}`,'var(--brand)');renderAll()}
@@ -2037,11 +2041,11 @@ async function togglePaid(sid){const s=studentById(sid);if(!s)return;const np=!s
   if(sb&&me&&me.real){const {error}=await sb.from('students').update({paid:np,paid_at:np?todayStr():null}).eq('id',sid);if(error){toast('❌ 실패',error.message,'var(--warn)');return}await loadStudents();}
   else{s.paid=np;s.paidAt=np?todayStr():null;save();}
   openStudent(sid);renderAll();toast(np?'✅ 입금확인':'입금확인 취소',np?`${s.name} 입금확인 처리됨`:'미확인으로 되돌림',np?'var(--in)':'var(--out)');}
-function gradeScoreText(x){const parts=[];if(x.score!=null&&x.score!=='')parts.push(`<b>${x.score}</b>점`);if(x.percentile!=null&&x.percentile!=='')parts.push(`백분위 <b>${x.percentile}</b>`);if(x.rank!=null&&x.rank!=='')parts.push(`<b>${x.rank}</b>등급`);return parts.join(' · ')||'-';}
+function gradeScoreText(x){const parts=[];if(x.score!=null&&x.score!=='')parts.push(`<b>${x.score}</b>점`);if(x.std!=null&&x.std!=='')parts.push(`표점 <b>${x.std}</b>`);if(x.percentile!=null&&x.percentile!=='')parts.push(`백분위 <b>${x.percentile}</b>`);if(x.rank!=null&&x.rank!=='')parts.push(`<b>${x.rank}</b>등급`);return parts.join(' · ')||'-';}
 function renderGrades(){const s=studentById(mdSid);const g=(s.grades||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));document.getElementById('md-grades').innerHTML=g.length?g.map(x=>`<div class="mini"><span>${x.exam} · ${x.subject}</span><span>${gradeScoreText(x)} <span style="color:var(--faint)">${x.date}</span></span></div>`).join(''):'<div class="empty">성적 기록 없음</div>'}
 async function addGrade(){const s=studentById(mdSid);const eg=collectExamGrades('g');if(!eg.exam){toast('⚠️ 입력 필요','시험을 선택하세요.','var(--warn)');return}if(!eg.rows.length){toast('⚠️ 입력 필요','과목별로 원점수·백분위·등급 중 하나 이상을 입력하세요.','var(--warn)');return}
-  if(sb&&me&&me.real){const {error}=await sb.from('grades').insert(eg.rows.map(r=>({student_id:mdSid,date:todayStr(),exam:eg.exam,subject:r.subject,score:r.score,percentile:r.percentile,rank:r.rank})));if(error){toast('❌ 실패',error.message,'var(--warn)');return}await loadStudents();}
-  else{eg.rows.forEach(r=>(s.grades=s.grades||[]).push({date:todayStr(),exam:eg.exam,subject:r.subject,score:r.score,percentile:r.percentile,rank:r.rank}));save();}
+  if(sb&&me&&me.real){const {error}=await sb.from('grades').insert(eg.rows.map(r=>({student_id:mdSid,date:todayStr(),exam:eg.exam,subject:r.subject,score:r.score,std:r.std,percentile:r.percentile,rank:r.rank})));if(error){toast('❌ 실패',error.message,'var(--warn)');return}await loadStudents();}
+  else{eg.rows.forEach(r=>(s.grades=s.grades||[]).push({date:todayStr(),exam:eg.exam,subject:r.subject,score:r.score,std:r.std,percentile:r.percentile,rank:r.rank}));save();}
   openStudent(mdSid);toast('📊 성적 등록',`${s.name} · ${eg.exam} ${eg.rows.length}과목 저장`,'var(--brand)')}
 let calState={sid:null,y:2026,m:0};
 function calMove(n){calState.m+=n;if(calState.m<0){calState.m=11;calState.y--}if(calState.m>11){calState.m=0;calState.y++}renderCal()}
