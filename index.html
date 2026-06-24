@@ -333,6 +333,13 @@
   /* 순찰 도구 + 현황표 */
   #seat-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 12px}
   .patrol-live{font-size:12px;font-weight:700;color:var(--in);background:var(--in-soft);padding:5px 11px;border-radius:20px}
+  .stat-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .stat-grp{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .stat-grp-t{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px}
+  .stat-chip{display:inline-flex;align-items:center;gap:6px;background:var(--panel-2);border-radius:8px;padding:5px 10px;margin:2px 4px 2px 0;font-size:12.5px}
+  .stat-chip b{font-size:14px;color:var(--brand)}
+  .stat-chip.tot b{color:var(--in)}
+  .stat-chip.wd b{color:var(--warn)}
   .mismatch-badge{display:inline-block;font-size:10.5px;font-weight:700;color:#fff;background:var(--warn);padding:2px 7px;border-radius:6px;margin-left:6px;white-space:nowrap}
   .mismatch-note{font-size:11.5px;color:var(--warn);background:var(--warn-soft);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.5}
   .teacher-card{cursor:pointer;transition:.12s;max-width:560px;margin-bottom:10px}
@@ -429,7 +436,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v76 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v77 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -503,6 +510,7 @@
     <div class="panel" id="p-students">
       <h2 class="section">원생 조회</h2>
       <div class="subtitle">학생을 체크해 일괄 문자를 보내거나, 이름을 클릭해 출결 달력·상담 기록·문자 발송을 볼 수 있습니다.</div>
+      <div id="st-stats"></div>
       <div class="chips" id="st-chips"></div>
       <label class="fld" style="max-width:360px"><span>검색</span><input class="in" id="st-search" placeholder="이름 검색" oninput="renderStudents()"></label>
       <div class="tbl-card"><table><thead><tr><th style="width:40px"><input type="checkbox" id="st-all" onclick="toggleAll(this)"></th><th>이름</th><th>구분</th><th>학교</th><th>오늘 상태</th><th>상담</th></tr></thead><tbody id="st-list"></tbody></table></div>
@@ -570,7 +578,7 @@
     <!-- ATTENDANCE (counter/assistant) -->
     <div class="panel" id="p-attendance">
       <h2 class="section">출결 관리 <span style="font-size:13px;color:var(--muted);font-weight:500">· 카운터/프런트</span></h2>
-      <div class="subtitle">학생을 찾아 등원·하원을 처리합니다. <b>시간 칸을 비우면 현재 시각</b>, 입력하면 그 시각으로 기록됩니다(예: 8시에 안 찍고 공부하다 10시에 발견 → 08:00 입력 후 등원). 처리 시 학부모 문자 발송.</div>
+      <div class="subtitle">학생을 찾아 등원·하원을 처리합니다. <b>오전/오후·시·분</b>을 골라 그 시각으로 기록할 수 있어요(기본값은 현재 시각). 예: 8시에 안 찍고 공부하다 10시에 발견 → 오전 8:00으로 맞춘 뒤 등원. 처리 시 학부모 문자 발송.</div>
       <label class="fld" style="max-width:360px"><span>학생 검색</span><input class="in" id="att-search" placeholder="이름 검색" oninput="renderAttendance()"></label>
       <div class="tbl-card"><table><thead><tr><th>이름</th><th>오늘 상태</th><th>시간 지정</th><th>처리</th></tr></thead><tbody id="att-list"></tbody></table></div>
     </div>
@@ -1061,9 +1069,11 @@ function fileToDataURL(id){return new Promise(res=>{const inp=document.getElemen
 function renderRegister(){fillGrades('f-grade');fillSeatSelect('f-seat','');fillExamBlock('f-block',true);}
 function mealOf(sid,date){return DB.meals.find(m=>m.sid===sid&&m.date===date)}
 function monthMeals(sid){const m=todayStr().slice(0,7);let l=0,d=0;DB.meals.forEach(x=>{if(x.sid===sid&&x.date.startsWith(m)){if(x.lunch)l++;if(x.dinner)d++}});return{lunch:l,dinner:d,fee:(l+d)*MEAL_PRICE}}
+function mealHalf(d){d=d||new Date();return d.getDate()<=15?'상':'하';}
+function halfMeals(sid,d){d=d||new Date();const y=d.getFullYear(),m=d.getMonth();const last=new Date(y,m+1,0).getDate();const lo=mealHalf(d)==='상'?1:16,hi=mealHalf(d)==='상'?15:last;const pre=y+'-'+String(m+1).padStart(2,'0')+'-';let l=0,dd=0;DB.meals.forEach(x=>{if(x.sid===sid&&x.date.startsWith(pre)){const day=+x.date.slice(8,10);if(day>=lo&&day<=hi){if(x.lunch)l++;if(x.dinner)dd++}}});return{lunch:l,dinner:dd,fee:(l+dd)*MEAL_PRICE,lo,hi,half:mealHalf(d)};}
 function fillGrades(id){document.getElementById(id).innerHTML=GRADES.map(g=>`<option value="${g}">${g}</option>`).join('')}
 function halfOfYear(){return new Date().getMonth()<6?'상':'하'}
-function applyTpl(str,s,extra){const M=new Date().getMonth()+1;const mfee=s.id?monthMeals(s.id).fee:(s.mealFee||0);const data={'[이름]':s.name,'[시간]':(extra&&extra.time)||nowTime(),'[학원비]':(s.tuition||0).toLocaleString('ko-KR'),'[납부월]':M,'[수납일]':s.payDay||'',' [급식월]':M,'[급식월]':M,'[반기]':halfOfYear(),'[급식비]':mfee.toLocaleString('ko-KR')};return str.replace(/\[이름\]|\[시간\]|\[학원비\]|\[납부월\]|\[수납일\]|\[급식월\]|\[반기\]|\[급식비\]/g,m=>data[m]!=null?data[m]:m)}
+function applyTpl(str,s,extra){const M=new Date().getMonth()+1;const mfee=s.id?halfMeals(s.id).fee:(s.mealFee||0);const data={'[이름]':s.name,'[시간]':(extra&&extra.time)||nowTime(),'[학원비]':(s.tuition||0).toLocaleString('ko-KR'),'[납부월]':M,'[수납일]':s.payDay||'','[급식월]':M,'[반기]':mealHalf(),'[급식비]':mfee.toLocaleString('ko-KR')};return str.replace(/\[이름\]|\[시간\]|\[학원비\]|\[납부월\]|\[수납일\]|\[급식월\]|\[반기\]|\[급식비\]/g,m=>data[m]!=null?data[m]:m)}
 
 /* ============ AUTH ============ */
 function authTab(w){document.getElementById('tab-login').classList.toggle('active',w==='login');document.getElementById('tab-signup').classList.toggle('active',w==='signup');document.getElementById('form-login').style.display=w==='login'?'block':'none';document.getElementById('form-signup').style.display=w==='signup'?'block':'none'}
@@ -1261,7 +1271,7 @@ async function logout(){try{if(sb&&me&&me.real)await sb.auth.signOut();}catch(e)
 /* ============ SHELL ============ */
 let activePanel=null;
 function buildShell(){
-  document.getElementById('u-name').textContent=me.name;
+  document.getElementById('u-name').textContent=me.name||me.email||'사용자';
   const rb=document.getElementById('u-role');rb.textContent=ROLE_LABEL[me.role];rb.className='rolebadge '+me.role;
   const panels=ROLE_PANELS[me.role];
   document.getElementById('navtabs').innerHTML=panels.map(p=>`<button data-p="${p}">${PANEL_LABEL[p]}</button>`).join('');
@@ -1288,8 +1298,9 @@ function seatOptionsHTML(currentId){
   let h=`<option value="">— 미배정 —</option>`;
   DB.seats.forEach(s=>{
     const isCur=String(s.id)===String(currentId);
+    if(s.bookable&&!isCur)return; // 신청석(스탠딩·라운지·부스 등)은 자리배정 대상에서 제외
     const taken=s.name&&!isCur;
-    const lbl=`${s.zone} ${s.label}`+(taken?` — ${s.name}`:(s.bookable?' · 신청석':''));
+    const lbl=`${s.zone} ${s.label}`+(taken?` — ${s.name}`:'');
     h+=`<option value="${s.id}"${isCur?' selected':''}${taken?' disabled':''}>${lbl}</option>`;
   });
   return h;
@@ -1327,7 +1338,8 @@ function cell(id){const s=seatById(id);if(!s)return '<div class="seat" style="vi
   }
   if(!s.name){
     if(ap)return `<div class="seat apply empty" onclick="${isStu?`applySeatSelf('${s.id}')`:`bookSeat('${s.id}')`}"><div class="sn">${s.label}</div><div class="free">＋</div></div>`;
-    return `<div class="seat empty"${isStu?'':` onclick="bookSeat('${s.id}')"`}><div class="sn">${s.label}</div></div>`;
+    if(isStu)return `<div class="seat" style="visibility:hidden"></div>`; // 학생에겐 공석/빈자리 숨김
+    return `<div class="seat empty" onclick="bookSeat('${s.id}')"><div class="sn">${s.label}</div></div>`;
   }
   const showName=!isStu||mine;
   let cls='seat '+(ap?'apply ':'')+(s.gender==='f'?'sx-f':'sx-m')+' '+(s.present?'present':'absent');
@@ -1502,8 +1514,23 @@ function renderDashboard(){const t=todayStr();document.getElementById('today-str
 let stFilter='all';
 const selectedSids=new Set();
 function setStFilter(f){stFilter=f;renderStudents()}
+function renderStudentStats(){
+  const box=document.getElementById('st-stats');if(!box)return;
+  const act=DB.students.filter(s=>s.status!=='withdrawn'),wd=DB.students.filter(s=>s.status==='withdrawn');
+  const byGrade=(arr,g)=>arr.filter(s=>(s.grade||'')===g).length;
+  const male=act.filter(s=>s.gender!=='f').length,female=act.filter(s=>s.gender==='f').length;
+  const chip=(lab,n,cls)=>`<div class="stat-chip ${cls||''}"><span>${lab}</span><b>${n}</b></div>`;
+  let html='<div class="stat-row">';
+  html+=`<div class="stat-grp"><div class="stat-grp-t">전체</div>${chip('재원',act.length,'tot')}${chip('퇴원',wd.length,'wd')}</div>`;
+  html+=`<div class="stat-grp"><div class="stat-grp-t">구분</div>${GRADES.map(g=>chip(g,byGrade(act,g))).join('')}</div>`;
+  html+=`<div class="stat-grp"><div class="stat-grp-t">성별</div>${chip('남',male)}${chip('여',female)}</div>`;
+  const wdItems=GRADES.map(g=>({g,n:byGrade(wd,g)})).filter(x=>x.n>0);
+  if(wdItems.length)html+=`<div class="stat-grp"><div class="stat-grp-t">자퇴(퇴원)</div>${wdItems.map(x=>chip(x.g+' 자퇴',x.n,'wd')).join('')}</div>`;
+  box.innerHTML=html+'</div>';
+}
 function infoMismatch(s){if(!s||!s.selfInfo)return false;const si=s.selfInfo;return['phone','parent'].some(k=>{const cur=((s[k]||'')+'').trim();const self=((si[k]||'')+'').trim();return self&&cur&&cur!==self;});}
 function renderStudents(){
+  renderStudentStats();
   const q=(document.getElementById('st-search').value||'').trim();
   const active=DB.students.filter(s=>s.status!=='withdrawn');
   const withdrawn=DB.students.filter(s=>s.status==='withdrawn');
@@ -1563,9 +1590,15 @@ function renderMeals(){const t=todayStr();document.getElementById('meal-date').t
   const ml=document.getElementById('m-month-list');if(ml){ml.innerHTML=DB.students.filter(s=>s.status!=='withdrawn').map(s=>{const mm=monthMeals(s.id);return `<tr><td><span class="name-link" onclick="openMealCal(${s.id})">${s.name}</span></td><td><span class="gradetag">${s.grade||'—'}</span></td><td>${mm.lunch}회</td><td>${mm.dinner}회</td><td><b>${mm.lunch+mm.dinner}회</b></td><td>${won(mm.fee)}</td></tr>`;}).join('')||'<tr><td colspan="6" class="empty">원생이 없습니다</td></tr>';}
 }
 function renderCounsel(){const t=todayStr();const act=canCounsel();const due=DB.students.filter(s=>s.counselDue<=t);document.getElementById('c-due-count').textContent=`${due.length}명 대기`;document.getElementById('c-act-th').textContent=act?'처리':'상태';document.getElementById('c-due').innerHTML=due.length?due.map(s=>`<tr><td><b>${s.name}</b></td><td>${s.lastCounsel||'첫 상담'}</td><td>${act?`<button class="btn in sm" onclick="counselDone(${s.id})">완료</button> <button class="btn sm ghost" onclick="counselDefer(${s.id})">내일로</button>`:'<span class="pill due">상담 필요</span>'}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">오늘 상담할 학생이 없습니다 ✨</td></tr>';document.getElementById('c-all').innerHTML=DB.students.map(s=>{const o=s.counselDue<=t;return `<tr><td><b>${s.name}</b></td><td>${s.lastCounsel||'—'}</td><td>${s.counselDue}</td><td>${o?'<span class="pill due">상담 필요</span>':'<span class="pill done">완료</span>'}</td></tr>`}).join('')}
-function renderAttendance(){const q=(document.getElementById('att-search').value||'').trim();const list=DB.students.filter(s=>s.status!=='withdrawn'&&(!q||s.name.includes(q)));document.getElementById('att-list').innerHTML=list.length?list.map(s=>`<tr><td><b>${s.name}</b></td><td>등원 ${timeOf(s.id,'IN')} · 하원 ${timeOf(s.id,'OUT')}<br>${statusPill(status(s.id))}</td><td><input type="time" class="in" id="att-t-${s.id}" style="width:118px;padding:6px 8px"></td><td><button class="btn in sm" onclick="mark(${s.id},'IN')">등원</button> <button class="btn out sm" onclick="mark(${s.id},'OUT')">하원</button></td></tr>`).join(''):'<tr><td colspan="4" class="empty">검색 결과 없음</td></tr>'}
+function attTimePicker(sid){const now=new Date();let h=now.getHours();const ap=h<12?'오전':'오후';let h12=h%12;if(h12===0)h12=12;const m=Math.floor(now.getMinutes()/5)*5;
+  const apo=['오전','오후'].map(x=>`<option ${x===ap?'selected':''}>${x}</option>`).join('');
+  let ho='';for(let i=1;i<=12;i++)ho+=`<option ${i===h12?'selected':''}>${i}</option>`;
+  let mo='';for(let x=0;x<60;x+=5){mo+=`<option ${x===m?'selected':''}>${String(x).padStart(2,'0')}</option>`;}
+  return `<div style="display:flex;gap:3px;align-items:center"><select class="in" id="att-ap-${sid}" style="width:60px;padding:6px 4px">${apo}</select><select class="in" id="att-h-${sid}" style="width:52px;padding:6px 4px">${ho}</select>:<select class="in" id="att-m-${sid}" style="width:56px;padding:6px 4px">${mo}</select></div>`;}
+function attTime(sid){const ap=document.getElementById('att-ap-'+sid),hh=document.getElementById('att-h-'+sid),mm=document.getElementById('att-m-'+sid);if(!ap||!hh||!mm)return nowTime();let h=parseInt(hh.value);if(ap.value==='오후'&&h<12)h+=12;if(ap.value==='오전'&&h===12)h=0;return String(h).padStart(2,'0')+':'+mm.value;}
+function renderAttendance(){const q=(document.getElementById('att-search').value||'').trim();const list=DB.students.filter(s=>s.status!=='withdrawn'&&(!q||s.name.includes(q)));document.getElementById('att-list').innerHTML=list.length?list.map(s=>`<tr><td><b>${s.name}</b></td><td>등원 ${timeOf(s.id,'IN')} · 하원 ${timeOf(s.id,'OUT')}<br>${statusPill(status(s.id))}</td><td>${attTimePicker(s.id)}</td><td><button class="btn in sm" onclick="mark(${s.id},'IN')">등원</button> <button class="btn out sm" onclick="mark(${s.id},'OUT')">하원</button></td></tr>`).join(''):'<tr><td colspan="4" class="empty">검색 결과 없음</td></tr>'}
 function renderUsers(){const roles=['master','director','assistant','counter','student','parent'];document.getElementById('u-list').innerHTML=DB.users.filter(u=>u.role!=='kiosk').map(u=>{const isMe=String(u.id)===String(me.id);const sel=`<select class="rolesel" ${isMe?'disabled':''} onchange="changeRole('${u.id}',this.value)">`+roles.map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${ROLE_LABEL[r]}</option>`).join('')+`</select>`;const linkSel=(u.role==='student'||u.role==='parent')?`<div style="margin-top:6px"><select class="rolesel" onchange="linkStudent('${u.id}',this.value)"><option value="">원생 연결 안함</option>${DB.students.map(s=>`<option value="${s.id}" ${String(u.sid)===String(s.id)?'selected':''}>${s.name}</option>`).join('')}</select></div>`:'';return `<tr><td><b>${u.name}</b>${isMe?' <span style="color:var(--gold);font-size:11px">(나)</span>':''}</td><td style="color:var(--muted)">${u.email}</td><td><span class="rolebadge ${u.role}">${ROLE_LABEL[u.role]}</span></td><td>${isMe?'<span style="color:var(--faint);font-size:12px">최상위 · 변경 불가</span>':sel}${linkSel}</td></tr>`}).join('')}
-function renderMyStatus(){const s=studentById(me.sid);if(!s){document.getElementById('my-name').textContent=me.name;document.getElementById('my-meta').textContent='연결된 학생 정보 없음';return}document.getElementById('my-name').textContent=(s.selfInfo&&s.selfInfo.name)||me.name||s.name;document.getElementById('my-meta').textContent=`${s.school||''} · ${s.grade||''}`;const st=status(s.id);const box=document.getElementById('my-status');box.className='status-big '+st;box.querySelector('.val').textContent={in:'등원했습니다',out:'하원했습니다',none:'아직 등원 전'}[st];const logs=todayLogs(s.id);document.getElementById('my-log').innerHTML=logs.length?logs.map(l=>`<div class="log-row"><span>${l.type==='IN'?'🟢 등원':'🟡 하원'}</span><span class="t">${l.time}</span></div>`).join(''):'<div class="empty">오늘 기록이 없습니다</div>'}
+function renderMyStatus(){const s=studentById(me.sid);if(!s){document.getElementById('my-name').textContent=me.name;document.getElementById('my-meta').textContent='연결된 학생 정보 없음';return}document.getElementById('my-name').textContent=(s.selfInfo&&s.selfInfo.name)||me.name||s.name||'학생';document.getElementById('my-meta').textContent=`${s.school||''} · ${s.grade||''}`.replace(/^ · | · $/,'');const st=status(s.id);const box=document.getElementById('my-status');box.className='status-big '+st;box.querySelector('.val').textContent={in:'등원했습니다',out:'하원했습니다',none:'아직 등원 전'}[st];const logs=todayLogs(s.id);document.getElementById('my-log').innerHTML=logs.length?logs.map(l=>`<div class="log-row"><span>${l.type==='IN'?'🟢 등원':'🟡 하원'}</span><span class="t">${l.time}</span></div>`).join(''):'<div class="empty">오늘 기록이 없습니다</div>'}
 function renderMealApply(){const s=studentById(me.sid);document.getElementById('ma-date').textContent=new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'})+' 신청';if(!s)return;const m=mealOf(s.id,todayStr())||{lunch:false,dinner:false};const setMb=(k,on)=>{const ap=document.getElementById('ap-'+k),cl=document.getElementById('cl-'+k);if(ap){ap.textContent=on?'신청됨 ✓':'신청';ap.className='btn sm '+(on?'meal-on':'primary');ap.disabled=on;}if(cl){cl.className='btn sm '+(on?'cancel-on':'ghost');cl.disabled=!on;cl.style.opacity=on?'1':'.45';}};setMb('lunch',!!m.lunch);setMb('dinner',!!m.dinner);
   ['lunch','dinner'].forEach(k=>{const el=document.getElementById('ms-'+k);const closed=pastMealDeadline(k);el.innerHTML=closed?`<span style="color:var(--warn)">신청 마감됨 (${MEAL_DEADLINE_LABEL[k]})</span>`:MEAL_DEADLINE_LABEL[k]});
   const mm=monthMeals(s.id);document.getElementById('ma-month').textContent=`점심 ${mm.lunch}회 · 저녁 ${mm.dinner}회 (예상 급식비 ${won(mm.fee)})`}
@@ -1889,9 +1922,9 @@ function openReport(sid,exam){const s=studentById(sid);const rows=((s&&s.grades)
   document.getElementById('rep-body').innerHTML=`<div style="overflow-x:auto"><table class="rep-tbl"><thead><tr><th style="text-align:left">영역</th><th>원점수</th><th>표준점수</th><th>백분위</th><th>등급</th></tr></thead><tbody>${body||'<tr><td colspan=5 class=empty>과목 없음</td></tr>'}</tbody></table></div>`;
   document.getElementById('reportModal').classList.add('show');}
 function closeReport(){document.getElementById('reportModal').classList.remove('show');}
-function payItems(s){const mm=monthMeals(s.id);const M=new Date().getMonth()+1;return [
-  {name:'학원비',amount:s.tuition||0,due:`매월 ${s.payDay||'-'}일`,status:'납부 예정'},
-  {name:`${M}월 급식비`,amount:mm.fee,due:'계좌이체',status:`점심 ${mm.lunch}·저녁 ${mm.dinner}회`},
+function payItems(s){const hm=halfMeals(s.id);const M=new Date().getMonth()+1;const mealDue=hm.half==='상'?'매월 15일 (상반기)':'매월 말일 (하반기)';return [
+  {name:'학원비',amount:s.tuition||0,due:`수납일 매월 ${s.payDay||'-'}일`,status:s.paid?'입금확인됨':'납부 예정'},
+  {name:`${M}월 ${hm.half}반기 급식비`,amount:hm.fee,due:`${mealDue} · 계좌이체`,status:`점심 ${hm.lunch}·저녁 ${hm.dinner}회`},
 ]}
 function payCard(it){return `<div class="card" style="margin-bottom:10px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-weight:700">${it.name}</div><div style="font-size:12px;color:var(--muted)">${it.due} · ${it.status}</div></div><div style="font-size:18px;font-weight:800;color:var(--meal)">${won(it.amount)}</div></div>`}
 function renderMyPay(){const s=studentById(me.sid);if(!s){document.getElementById('mypay-list').innerHTML='<div class="empty">정보 없음</div>';return}document.getElementById('mypay-list').innerHTML=payItems(s).map(payCard).join('')+`<div class="demo-note">컨텐츠(이감·더프 등) 신청 내역은 추후 연동됩니다.</div>`}
@@ -1903,12 +1936,12 @@ function renderParentHome(){
   const stTxt={in:'등원 중',out:'하원 완료',none:'아직 등원 전'}[st];
   const stCol={in:'var(--in)',out:'var(--out)',none:'var(--faint)'}[st];
   document.getElementById('ph-attend').innerHTML=`<h4 style="margin:0 0 10px;font-size:13px;color:var(--muted)">오늘 출결</h4><div style="font-size:24px;font-weight:800;color:${stCol}">${stTxt}</div><div class="mini"><span>등원</span><span>${tin}</span></div><div class="mini"><span>하원</span><span>${tout}</span></div>`;
-  document.getElementById('ph-pay').innerHTML=`<h4 style="margin:0 0 10px;font-size:13px;color:var(--muted)">납부할 목록</h4>`+payItems(s).map(it=>`<div class="mini"><span>${it.name}</span><span><b>${won(it.amount)}</b></span></div>`).join('');
+  document.getElementById('ph-pay').innerHTML=`<h4 style="margin:0 0 10px;font-size:13px;color:var(--muted)">납부할 목록</h4>`+payItems(s).map(it=>`<div class="mini" style="align-items:flex-start"><span>${it.name}<div style="font-size:11px;color:var(--muted);margin-top:2px">${it.due} · ${it.status}</div></span><span><b>${won(it.amount)}</b></span></div>`).join('');
 }
 
 /* ============ ACTIONS ============ */
 async function mark(sid,type){
-  const tEl=document.getElementById('att-t-'+sid);const time=(tEl&&tEl.value)?tEl.value:nowTime();
+  const time=attTime(sid);
   if(sb&&me&&me.real){const {error}=await sb.from('attendance').insert({student_id:sid,type,date:todayStr(),time});if(error){toast('❌ 출결 실패',error.message,'var(--warn)');return}await loadAttendance();}
   else{DB.attend.push({sid,type,date:todayStr(),time});save();}
   notifyParentTime(sid,type,time);renderAll()}
@@ -1994,8 +2027,8 @@ function openStudent(sid){mdSid=sid;const s=studentById(sid);document.getElement
     <div class="mblock">
       <h4>납부 정보</h4>
       <div class="mini"><span>학원비 (월)</span><span>${won(s.tuition||0)} · 매월 ${s.payDay||'-'}일</span></div>
-      <div class="mini"><span>이번 달 급식</span><span>점심 ${mm.lunch}회 · 저녁 ${mm.dinner}회 (회당 7,000원)</span></div>
-      <div class="mini"><span>이번 달 급식비</span><span><b>${won(mm.fee)}</b></span></div>
+      <div class="mini"><span>이번 달 급식(누적)</span><span>점심 ${mm.lunch}회 · 저녁 ${mm.dinner}회</span></div>
+      <div class="mini"><span>${mealHalf()==='상'?'상':'하'}반기 급식비 (회당 7,000원)</span><span><b>${won(halfMeals(sid).fee)}</b> <span style="font-size:11px;color:var(--muted)">${mealHalf()==='상'?'~15일':'16일~말일'}</span></span></div>
       <div class="mini"><span>입금 상태</span><span>${s.paid?`<span class="pill done">입금확인됨 ${s.paidAt||''}</span>`:'<span class="pill due">미확인</span>'}</span></div>
       <button class="btn sm" style="width:100%;margin-top:8px" onclick="togglePaid(${sid})">${s.paid?'입금확인 취소':'✅ 입금확인'}</button>
     </div>
