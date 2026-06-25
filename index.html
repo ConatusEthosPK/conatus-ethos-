@@ -441,7 +441,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v83 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v84 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -519,7 +519,7 @@
       <div id="st-stats"></div>
       <div class="chips" id="st-chips"></div>
       <label class="fld" style="max-width:360px"><span>검색</span><input class="in" id="st-search" placeholder="이름 검색" oninput="renderStudents()"></label>
-      <div class="tbl-card"><table><thead><tr><th style="width:40px"><input type="checkbox" id="st-all" onclick="toggleAll(this)"></th><th>이름</th><th>구분</th><th>학교</th><th>오늘 상태</th><th>상담</th></tr></thead><tbody id="st-list"></tbody></table></div>
+      <div class="tbl-card"><table><thead><tr><th style="width:40px"><input type="checkbox" id="st-all" onclick="toggleAll(this)"></th><th>이름</th><th>구분</th><th>좌석</th><th>학교</th><th>오늘 상태</th><th>상담</th></tr></thead><tbody id="st-list"></tbody></table></div>
       <div class="bulkbar" id="bulkbar">
         <span><b id="sel-count">0</b>명 선택</span>
         <div class="bb-actions">
@@ -550,7 +550,10 @@
       </div>
       <div class="panel-title" style="margin-top:18px"><h3>반기 정산 <span id="m-half-label" style="font-size:12px;color:var(--muted)"></span></h3><span class="hint">식당 내역서 대조용 · 퇴원생 포함</span></div>
       <div class="grid g3" id="m-totals"></div>
-      <div class="tbl-card" style="margin-top:10px"><table><thead><tr><th>이름</th><th>구분</th><th>점심</th><th>저녁</th><th>합계</th><th>금액</th></tr></thead><tbody id="m-settle"></tbody></table></div>
+      <div class="panel-title" style="margin-top:14px"><h3>날짜별 신청량</h3><span class="hint">식당 내역서와 대조</span></div>
+      <div class="tbl-card" style="max-height:300px;overflow:auto"><table><thead><tr><th>날짜</th><th>중식(점심)</th><th>석식(저녁)</th><th>합계</th></tr></thead><tbody id="m-daily"></tbody></table></div>
+      <div class="panel-title" style="margin-top:14px"><h3>사람별 합계</h3></div>
+      <div class="tbl-card"><table><thead><tr><th>이름</th><th>구분</th><th>점심</th><th>저녁</th><th>합계</th><th>금액</th></tr></thead><tbody id="m-settle"></tbody></table></div>
     </div>
 
     <!-- COUNSEL -->
@@ -928,11 +931,11 @@ function pastMealDeadline(kind){return nowTime()>MEAL_DEADLINE[kind]}
 const GRADES=['고1','고2','고3','재수생','N수생','검정고시'];
 const ROLE_LABEL={master:'마스터',director:'원장',assistant:'조교',counter:'카운터',student:'학생',parent:'학부모',kiosk:'입구 태블릿'};
 const ROLE_PANELS={
-  master:['dashboard','seats','students','meals','counsel','register','schedule','board','staffsched','mytimetable','questions','contents','dm','templates','staff','users'],
-  director:['dashboard','seats','students','counsel','register','schedule','board','staffsched','mytimetable','questions','contents','dm','templates','staff'],
-  assistant:['seats','counsel','register','schedule','attendance','board','staffsched','mytimetable','questions','staff','dm'],
-  counter:['seats','students','meals','attendance','register','schedule','board','staffsched','mytimetable','contents','staff','dm','templates'],
-  student:['mystatus','seats','mytimetable','mygrades','mealapply','mypay','board','staffsched','questions','contents','group','dm'],
+  master:['dashboard','seats','students','meals','counsel','register','schedule','board','staffsched','questions','contents','dm','templates','staff','users'],
+  director:['dashboard','seats','students','counsel','register','schedule','board','staffsched','questions','contents','dm','templates','staff'],
+  assistant:['seats','counsel','register','schedule','attendance','board','staffsched','questions','staff','dm'],
+  counter:['seats','students','meals','attendance','register','schedule','board','staffsched','contents','staff','dm','templates'],
+  student:['mystatus','seats','mytimetable','mygrades','mealapply','mypay','board','staffsched','questions','contents','dm'],
   parent:['parenthome','board'],
   kiosk:['kiosk']
 };
@@ -1226,7 +1229,7 @@ async function loadStudents(){
       sb.from('counsel_log').select('*')
     ]);
     if(st.data){
-      DB.students=st.data.map(r=>({id:r.id,name:r.name,phone:r.phone||'',parent:r.parent_phone||'',school:r.school||'',grade:r.grade||'',gender:r.gender||'m',birth:r.birth||'',address:r.address||'',emergency:r.emergency||'',note:r.note||'',tuition:r.tuition||0,payDay:r.pay_day||5,mealFee:0,lastCounsel:r.last_counsel||null,counselDue:r.counsel_due||todayStr(),counselHist:[],grades:[],selfInfo:r.self_info||null,status:r.status||'active',paid:!!r.paid,paidAt:r.paid_at||null}));
+      DB.students=st.data.map(r=>({id:r.id,name:r.name,phone:r.phone||'',parent:r.parent_phone||'',school:r.school||'',grade:r.grade||'',gender:r.gender||'m',birth:r.birth||'',address:r.address||'',emergency:r.emergency||'',note:r.note||'',tuition:r.tuition||0,payDay:r.pay_day||5,mealFee:0,lastCounsel:r.last_counsel||null,counselDue:r.counsel_due||todayStr(),counselHist:[],grades:[],selfInfo:r.self_info||null,status:r.status||'active',withdrawnAt:r.withdrawn_at||null,paid:!!r.paid,paidAt:r.paid_at||null}));
       if(gr.data)gr.data.forEach(g=>{const s=DB.students.find(x=>x.id===g.student_id);if(s)s.grades.push({date:g.date,exam:g.exam,subject:g.subject,score:g.score,std:g.std,percentile:g.percentile,rank:g.rank})});
       if(cl.data)cl.data.forEach(c=>{const s=DB.students.find(x=>x.id===c.student_id);if(s)s.counselHist.push(c.date)});
     }
@@ -1336,6 +1339,7 @@ function setSeatCat(v){seatCat=(seatCat===v)?'':v;renderSeats();}
 function seatCatMatch(s){if(!seatCat)return true;if(seatCat==='남')return s.gender!=='f';if(seatCat==='여')return s.gender==='f';return (s.grade||'')===seatCat;}
 function seatById(id){return DB.seats.find(s=>s.id===id)}
 function seatOf(sid){return DB.seats.find(s=>sid!=null&&String(s.sid)===String(sid))}
+function homeSeatOf(sid){return DB.seats.find(s=>!s.bookable&&s.name&&sid!=null&&String(s.sid)===String(sid))}
 function appliedSeatOf(s){if(s.bookable||!s.name)return null;return DB.seats.find(x=>x.bookable&&x.name&&((x.sid!=null&&s.sid!=null&&String(x.sid)===String(s.sid))||x.name===s.name));}
 function moveDestText(m){if(m.label==='휴게실'||m.label==='방음부스')return m.label;return m.zone.replace('외부 스탠딩','외부')+' '+m.label;}
 function seatOptionsHTML(currentId){
@@ -1587,8 +1591,6 @@ function renderStudentStats(){
   let html='<div class="stat-row">';
   html+=`<div class="stat-grp"><div class="stat-grp-t">구분 (눌러서 필터)</div>${GRADES.map(g=>chip(g,byGrade(act,g),'',g)).join('')}</div>`;
   html+=`<div class="stat-grp"><div class="stat-grp-t">성별 (눌러서 필터)</div>${chip('남',male,'','남')}${chip('여',female,'','여')}</div>`;
-  const wdItems=GRADES.map(g=>({g,n:byGrade(wd,g)})).filter(x=>x.n>0);
-  if(wdItems.length)html+=`<div class="stat-grp"><div class="stat-grp-t">자퇴(퇴원)</div>${wdItems.map(x=>chip(x.g+' 자퇴',x.n,'wd')).join('')}</div>`;
   box.innerHTML=html+'</div>';
 }
 function infoMismatch(s){if(!s||!s.selfInfo)return false;const si=s.selfInfo;return['phone','parent'].some(k=>{const cur=((s[k]||'')+'').trim();const self=((si[k]||'')+'').trim();return self&&cur&&cur!==self;});}
@@ -1600,20 +1602,20 @@ function renderStudents(){
   const withdrawn=DB.students.filter(s=>s.status==='withdrawn'&&!staffSet.has(String(s.id)));
   const cnt={all:active.length,none:0,in:0,out:0};
   active.forEach(s=>{cnt[status(s.id)]++});
-  const chips=[['all','전체',cnt.all],['none','미등원',cnt.none],['in','등원',cnt.in],['out','하원',cnt.out],['withdrawn','퇴원생',withdrawn.length]];
-  document.getElementById('st-chips').innerHTML=chips.map(([k,lab,n])=>`<button class="${stFilter===k?'active':''}" onclick="setStFilter('${k}')">${lab}<b>${n}</b></button>`).join('');
+  const chips=[['all','전체',cnt.all],['none','미등원',cnt.none],['in','등원',cnt.in],['out','하원',cnt.out],['withdrawn','퇴원생','']];
+  document.getElementById('st-chips').innerHTML=chips.map(([k,lab,n])=>`<button class="${stFilter===k?'active':''}" onclick="setStFilter('${k}')">${lab}${n!==''?'<b>'+n+'</b>':''}</button>`).join('');
   if(stFilter==='withdrawn'){
-    const wl=withdrawn.filter(s=>!q||s.name.includes(q));
-    document.getElementById('st-list').innerHTML=wl.length?wl.map(s=>`<tr><td>—</td><td><span class="name-link" onclick="openStudent(${s.id})">${s.name}</span></td><td><span class="gradetag">${s.grade||'—'}</span></td><td style="color:var(--muted)">${s.school||'—'}</td><td><span class="pill none">퇴원</span></td><td><button class="btn sm" onclick="reinstateStudent(${s.id})">재원</button> <button class="btn sm ghost" onclick="deleteStudent(${s.id})">완전삭제</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">퇴원생이 없습니다</td></tr>';
+    const wl=withdrawn.filter(s=>!q||s.name.includes(q)).slice().sort((a,b)=>String(b.withdrawnAt||'').localeCompare(String(a.withdrawnAt||'')));
+    document.getElementById('st-list').innerHTML=wl.length?wl.map(s=>`<tr><td>—</td><td><span class="name-link" onclick="openStudent(${s.id})">${s.name}</span></td><td><span class="gradetag">${s.grade||'—'}</span></td><td style="color:var(--muted)">${s.school||'—'}</td><td>퇴원일 <b>${s.withdrawnAt||'-'}</b></td><td><button class="btn sm" onclick="reinstateStudent(${s.id})">재원</button> <button class="btn sm ghost" onclick="deleteStudent(${s.id})">완전삭제</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">퇴원생이 없습니다</td></tr>';
     updateSelCount();return;
   }
   const list=active.filter(s=>(!q||s.name.includes(q))&&(stFilter==='all'||status(s.id)===stFilter)&&catMatch(s));
-  document.getElementById('st-list').innerHTML=list.length?list.map(s=>{const o=s.counselDue<=todayStr();const ck=selectedSids.has(s.id)?'checked':'';const mm=infoMismatch(s)?' <span class="mismatch-badge">⚠ 정보 비대칭!</span>':'';return `<tr><td><input type="checkbox" ${ck} onclick="toggleSel(${s.id},this)"></td><td><span class="name-link" onclick="openStudent(${s.id})">${s.name}</span>${mm}</td><td><span class="gradetag">${s.grade||'—'}</span></td><td style="color:var(--muted)">${s.school||'—'}</td><td>${statusPill(status(s.id))}</td><td>${o?'<span class="pill due">상담 필요</span>':'<span class="pill done">완료</span>'}</td></tr>`}).join(''):'<tr><td colspan="6" class="empty">결과 없음</td></tr>';
+  document.getElementById('st-list').innerHTML=list.length?list.map(s=>{const o=s.counselDue<=todayStr();const ck=selectedSids.has(s.id)?'checked':'';const mm=infoMismatch(s)?' <span class="mismatch-badge">⚠ 정보 비대칭!</span>':'';const hs=homeSeatOf(s.id);return `<tr><td><input type="checkbox" ${ck} onclick="toggleSel(${s.id},this)"></td><td><span class="name-link" onclick="openStudent(${s.id})">${s.name}</span>${mm}</td><td><span class="gradetag">${s.grade||'—'}</span></td><td style="text-align:center">${hs?`<b>${hs.label}</b>`:'<span style="color:var(--faint)">미배정</span>'}</td><td style="color:var(--muted)">${s.school||'—'}</td><td>${statusPill(status(s.id))}</td><td>${o?'<span class="pill due">상담 필요</span>':'<span class="pill done">완료</span>'}</td></tr>`}).join(''):'<tr><td colspan="7" class="empty">결과 없음</td></tr>';
   updateSelCount();
 }
-async function withdrawStudent(sid){if(!confirm('이 학생을 퇴원 처리할까요? (퇴원생 목록으로 이동)'))return;
-  if(sb&&me&&me.real){await sb.from('students').update({status:'withdrawn'}).eq('id',sid);await loadStudents();}
-  else{const s=studentById(sid);if(s)s.status='withdrawn';save();}
+async function withdrawStudent(sid){if(!confirm('이 학생을 퇴원 처리할까요? (퇴원생 목록으로 이동)'))return;const wd=todayStr();
+  if(sb&&me&&me.real){await sb.from('students').update({status:'withdrawn',withdrawn_at:wd}).eq('id',sid);await loadStudents();}
+  else{const s=studentById(sid);if(s){s.status='withdrawn';s.withdrawnAt=wd;}save();}
   document.getElementById('modal').classList.remove('show');renderAll();toast('🚪 퇴원 처리','퇴원생 목록으로 이동했습니다.','var(--out)');}
 async function reinstateStudent(sid){
   if(sb&&me&&me.real){await sb.from('students').update({status:'active'}).eq('id',sid);await loadStudents();}
@@ -1674,6 +1676,11 @@ function renderMeals(){
     `<div class="card stat"><div class="num">${won(stuFee)}</div><div class="lbl">학생 급식 (${stuMeals}끼)</div></div>`+
     `<div class="card stat"><div class="num">${won(stfFee)}</div><div class="lbl">선생님 급식 (${stfMeals}끼)</div></div>`+
     `<div class="card stat"><div class="num meal">${won(stuFee+stfFee)}</div><div class="lbl">반기 총액 (식당 대조)</div></div>`;
+  const y=dpick.getFullYear(),mo=dpick.getMonth(),last=new Date(y,mo+1,0).getDate(),lo=half==='상'?1:16,hi=half==='상'?15:last,pre=y+'-'+String(mo+1).padStart(2,'0')+'-';
+  const daily={};const addD=(dt,l,d)=>{if(!dt||!dt.startsWith(pre))return;const day=+dt.slice(8,10);if(day<lo||day>hi)return;daily[dt]=daily[dt]||{l:0,d:0};if(l)daily[dt].l++;if(d)daily[dt].d++;};
+  DB.meals.forEach(m=>addD(m.date,m.lunch,m.dinner));DB.staffMeals.forEach(m=>addD(m.date,m.lunch,m.dinner));
+  const dates=Object.keys(daily).sort();
+  document.getElementById('m-daily').innerHTML=dates.length?dates.map(dt=>`<tr><td>${dt.slice(5).replace('-','/')}</td><td>${daily[dt].l}</td><td>${daily[dt].d}</td><td><b>${daily[dt].l+daily[dt].d}</b></td></tr>`).join(''):'<tr><td colspan="4" class="empty">신청 내역 없음</td></tr>';
 }
 async function deskSetMeal(sid,date,kind){const m=mealOf(sid,date);const on=!(m&&m[kind]);
   if(sb&&me&&me.real){const row={student_id:sid,date,lunch:m?!!m.lunch:false,dinner:m?!!m.dinner:false};row[kind]=on;const {error}=await sb.from('meals').upsert(row,{onConflict:'student_id,date'});if(error){toast('❌ 실패',error.message,'var(--warn)');return}await loadMeals();}
@@ -2255,12 +2262,11 @@ async function kiosk(type){if(!kbuf){toast('⚠️ 번호 입력','휴대폰 번
     const byFront=pool.filter(x=>front4(x.phone)===inp);
     matches=[...new Set([...byBack,...byFront])];
     if(matches.length>1){
-      // 뒷자리 등으로 여러 명 일치 → 앞(가운데) 4자리로 다시
-      toast('⚠️ 번호 중복',`같은 4자리 학생이 ${matches.length}명 있어요. <b>휴대폰 가운데(앞) 4자리</b>를 입력해 주세요.`,'var(--warn)');kbuf='';kdisp();return;
+      toast('⚠️ 번호 중복','중복 원생이 있어요. <b>전화번호 앞자리</b>를 입력해 주세요.','var(--warn)');kbuf='';kdisp();return;
     }
   }
   if(matches.length===0){toast('❓ 학생 없음','일치하는 번호가 없습니다. 전체번호 또는 앞/뒷 4자리를 입력해 주세요.','var(--warn)');kbuf='';kdisp();return}
-  if(matches.length>1){toast('⚠️ 번호 중복',`여러 명이 일치합니다(${matches.length}명). <b>전체 번호</b>를 입력해 주세요.`,'var(--warn)');kbuf='';kdisp();return}
+  if(matches.length>1){toast('⚠️ 번호 중복','중복 원생이 있어요. <b>전체 번호</b>를 입력해 주세요.','var(--warn)');kbuf='';kdisp();return}
   const s=matches[0];await mark(s.id,type);const verb=type==='IN'?'등원':'하원';toast(`${type==='IN'?'🟢':'🟡'} ${verb} 완료 — ${s.name}`,`${nowTime()} · 학부모에게 문자가 발송되었습니다.`,type==='IN'?'var(--in)':'var(--out)');kbuf='';kdisp()}
 
 /* ============ toast ============ */
