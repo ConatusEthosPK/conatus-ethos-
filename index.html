@@ -441,7 +441,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v84 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v87 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -1339,7 +1339,7 @@ function setSeatCat(v){seatCat=(seatCat===v)?'':v;renderSeats();}
 function seatCatMatch(s){if(!seatCat)return true;if(seatCat==='남')return s.gender!=='f';if(seatCat==='여')return s.gender==='f';return (s.grade||'')===seatCat;}
 function seatById(id){return DB.seats.find(s=>s.id===id)}
 function seatOf(sid){return DB.seats.find(s=>sid!=null&&String(s.sid)===String(sid))}
-function homeSeatOf(sid){return DB.seats.find(s=>!s.bookable&&s.name&&sid!=null&&String(s.sid)===String(sid))}
+function homeSeatOf(sid){const st=studentById(sid);return DB.seats.find(x=>!x.bookable&&x.name&&((x.sid!=null&&sid!=null&&String(x.sid)===String(sid))||(st&&x.name&&x.name===st.name)))}
 function appliedSeatOf(s){if(s.bookable||!s.name)return null;return DB.seats.find(x=>x.bookable&&x.name&&((x.sid!=null&&s.sid!=null&&String(x.sid)===String(s.sid))||x.name===s.name));}
 function moveDestText(m){if(m.label==='휴게실'||m.label==='방음부스')return m.label;return m.zone.replace('외부 스탠딩','외부')+' '+m.label;}
 function seatOptionsHTML(currentId){
@@ -1381,17 +1381,18 @@ function cell(id){const s=seatById(id);if(!s)return '<div class="seat" style="vi
   }
   const mine=isStu&&((s.sid&&me.sid&&String(s.sid)===String(me.sid))||(s.name&&s.name===me.name));
   if(isStu){
-    if(ap){ // 신청석: 신청 가능/내 신청/사용중만 구분
-      if(!s.name)return `<div class="seat apply empty" onclick="applySeatSelf('${s.id}')"><div class="sn">${s.label}</div><div class="free">＋</div></div>`;
-      if(mine)return `<div class="seat apply mine" onclick="cancelApplySelf('${s.id}')"><div class="sn">${s.label}</div><div class="snm">신청됨</div></div>`;
-      return `<div class="seat apply" style="opacity:.45;cursor:default"><div class="sn">${s.label}</div><div class="snm" style="font-size:9px;color:var(--muted)">사용중</div></div>`;
+    // 학생: 번호 전부 숨김. 내 자리/신청석/신청가능 여부만 표시
+    if(ap){
+      if(!s.name)return `<div class="seat apply empty" onclick="applySeatSelf('${s.id}')"><div class="free">＋</div><div style="font-size:8px;color:#a78bfa">신청</div></div>`;
+      if(mine)return `<div class="seat apply mine" onclick="cancelApplySelf('${s.id}')"><div class="snm">신청됨</div></div>`;
+      return `<div class="seat apply" style="opacity:.4;cursor:default"><div class="snm" style="font-size:9px;color:var(--muted)">신청석</div></div>`;
     }
-    if(mine){ // 내 자리(번호석)
+    if(mine){
       const mt=appliedSeatOf(s);
-      if(mt)return `<div class="seat moved mine"><div class="sn">${s.label}</div><div class="moveto">→ ${moveDestText(mt)}</div></div>`;
-      return `<div class="seat mine present"><div class="sn">${s.label}</div><div class="snm">내 자리</div></div>`;
+      if(mt)return `<div class="seat moved mine"><div class="moveto" style="font-size:10px">→ ${moveDestText(mt)}</div></div>`;
+      return `<div class="seat mine present"><div class="snm">내 자리</div></div>`;
     }
-    return `<div class="seat seat-gray"></div>`; // 그 외 모든 자리는 회색(정보 없음)
+    return `<div class="seat seat-gray"></div>`; // 그 외 모든 자리는 회색(번호 없음)
   }
   const movedTo=(!s.bookable&&s.name)?appliedSeatOf(s):null;
   if(movedTo){
@@ -1652,7 +1653,7 @@ function bkSend(){
   toast(`📩 ${ids.length}명 일괄 발송 완료`,`예) ${first.name} → ${example.split('\n')[0]} …`,'var(--brand)');
   closeBulk();clearSel();
 }
-const MEAL_STAFF=['권다은','심낙범','방준현','조성우','이수윤'];
+const MEAL_STAFF=['권다은','심낙범','방준현','조성우','이수윤','박제용'];
 function renderMeals(){
   const pickEl=document.getElementById('meal-pick');if(pickEl&&!pickEl.value)pickEl.value=todayStr();
   const date=(pickEl&&pickEl.value)||todayStr();const dpick=new Date(date+'T00:00:00');
@@ -1782,9 +1783,9 @@ async function delAnnual(id){
   else{DB.annual=DB.annual.filter(x=>x.id!==id);save();}
   renderBoard();toast('🗑 일정 삭제','일정을 삭제했습니다.','var(--out)')}
 function canEditSched(){return me.role==='master'||me.role==='director'||me.role==='counter'}
-const SHIFT_COLORS={'방준현':'#60a5fa','권다은':'#34d399','심낙범':'#fbbf24','조성우':'#f472b6','이수윤':'#a78bfa','김진아':'#fb923c'};
+const SHIFT_COLORS={'방준현':'#60a5fa','권다은':'#34d399','심낙범':'#fbbf24','조성우':'#f472b6','이수윤':'#a78bfa','박제용':'#2dd4bf','김진아':'#fb923c'};
 function teacherColor(t){return SHIFT_COLORS[t]||'#d1d5db'}
-const SCHED_TEACHERS=['권다은','심낙범','방준현','조성우','이수윤'];
+const SCHED_TEACHERS=['권다은','심낙범','방준현','조성우','이수윤','박제용'];
 let schedTeacher='방준현',schedErase=false;
 function setSchedTeacher(t){schedTeacher=t;schedErase=false;renderStaffSched()}
 function setSchedErase(){schedErase=true;schedTeacher=null;renderStaffSched()}
@@ -1888,7 +1889,8 @@ const TEACHER_PROFILES=[
   {name:'심낙범',subject:'국어·수학·탐구',intro:'국어(공통/화작) · 수학(공통/확통) · 생활과윤리/사회문화/정치와법'},
   {name:'방준현',subject:'국어·수학·영어·탐구',intro:'국어(공통/화작) · 수학(공통/확통) · 영어 · 생활과윤리/사회문화/윤리와사상'},
   {name:'조성우',subject:'수학·과탐',intro:'수학(공통/미적분) · 물리/지구과학'},
-  {name:'이수윤',subject:'국어·수학·영어',intro:'국어(공통/화작) · 수학(공통/확통) · 영어'}
+  {name:'이수윤',subject:'국어·수학·영어',intro:'국어(공통/언매) · 수학(공통/확통) · 영어'},
+  {name:'박제용',subject:'수학·과탐',intro:'수학(공통/미적분) · 물리/지구과학'}
 ];
 let qTeacher=null;
 function setQTeacher(n){qTeacher=n;renderQuestions();}
