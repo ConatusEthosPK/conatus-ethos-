@@ -86,6 +86,19 @@
 
   .wrap{max-width:1080px;margin:0 auto;padding:26px 22px 80px}
   .panel{display:none;animation:fade .3s ease}
+  .dday-bar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:4px 0 14px}
+  .dday-card{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:12px 6px;text-align:center}
+  .dday-card .dday-lb{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:4px}
+  .dday-card .dday-d{font-size:19px;font-weight:800;color:var(--brand)}
+  .dday-card.today{background:var(--warn-soft);border-color:var(--warn)}
+  .dday-card.today .dday-d{color:var(--warn)}
+  .home-sec{margin-bottom:24px}
+  .home-sec-t{font-size:13px;font-weight:800;color:var(--muted);margin-bottom:12px;letter-spacing:.3px}
+  .home-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(124px,1fr));gap:14px}
+  .home-card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px 10px;display:flex;flex-direction:column;align-items:center;gap:11px;cursor:pointer;transition:.15s;color:var(--ink)}
+  .home-card:hover{border-color:var(--brand);transform:translateY(-2px);box-shadow:var(--shadow)}
+  .home-ic{width:56px;height:56px;border-radius:50%;background:var(--panel-2);display:grid;place-items:center;font-size:27px}
+  .home-lb{font-size:13px;font-weight:700;text-align:center;line-height:1.2}
   .panel.show{display:block}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
   h2.section{font-size:22px;margin:0 0 4px}
@@ -441,7 +454,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v87 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v91 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -635,6 +648,7 @@
       <div class="subtitle">나의 실시간 등하원 상태와 오늘 기록입니다.</div>
       <div class="phone-frame">
         <div class="phone-top"><div class="who" id="my-name">—</div><div class="meta" id="my-meta">—</div></div>
+        <div id="dday-bar" class="dday-bar"></div>
         <div class="status-big none" id="my-status"><div class="label">현재 상태</div><div class="val">기록 없음</div></div>
         <div style="font-size:12px;color:var(--muted);margin:6px 2px 8px;font-weight:600">오늘 기록</div>
         <div id="my-log"></div>
@@ -929,6 +943,9 @@ const MEAL_DEADLINE={lunch:'09:30',dinner:'14:00'};
 const MEAL_DEADLINE_LABEL={lunch:'오전 9:30까지 신청',dinner:'오후 2:00까지 신청'};
 function pastMealDeadline(kind){return nowTime()>MEAL_DEADLINE[kind]}
 const GRADES=['고1','고2','고3','재수생','N수생','검정고시'];
+const DDAYS=[{label:'수능',date:'2026-11-19'},{label:'9월 모평',date:'2026-09-03'},{label:'사관학교',date:'2026-08-01'}];
+function ddayStr(date){const d=Math.round((new Date(date+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000);return d>0?'D-'+d:(d===0?'D-DAY':'D+'+(-d));}
+function renderDdays(){const box=document.getElementById('dday-bar');if(!box)return;box.innerHTML=DDAYS.map(x=>{const t=ddayStr(x.date);const today=t==='D-DAY';return `<div class="dday-card ${today?'today':''}"><div class="dday-lb">${x.label}</div><div class="dday-d">${t}</div></div>`;}).join('');}
 const ROLE_LABEL={master:'마스터',director:'원장',assistant:'조교',counter:'카운터',student:'학생',parent:'학부모',kiosk:'입구 태블릿'};
 const ROLE_PANELS={
   master:['dashboard','seats','students','meals','counsel','register','schedule','board','staffsched','questions','contents','dm','templates','staff','users'],
@@ -939,7 +956,17 @@ const ROLE_PANELS={
   parent:['parenthome','board'],
   kiosk:['kiosk']
 };
-const PANEL_LABEL={dashboard:'대시보드',seats:'좌석배치도',students:'원생 조회',meals:'급식 현황',counsel:'상담 관리',register:'원생 등록',schedule:'스케줄표',board:'공지·일정',staffsched:'조교 출근표',questions:'질문',contents:'컨텐츠 신청',dm:'DM',attendance:'출결 관리',templates:'발송문자 설정',staff:'직원 관리',users:'사용자 관리',mystatus:'내 출결',mytimetable:'시간표',mygrades:'내 성적',mealapply:'급식 신청',mypay:'납부 목록',parenthome:'자녀 현황',kiosk:'태블릿'};
+const PANEL_ICON={home:'🏠',dashboard:'📊',seats:'🪑',students:'👥',meals:'🍚',counsel:'💬',register:'📝',schedule:'🗓',board:'📢',staffsched:'📋',questions:'❓',contents:'📦',dm:'✉️',attendance:'✅',templates:'⚙️',staff:'🧑‍🏫',users:'🔑',mystatus:'✅',mytimetable:'⏰',mygrades:'📄',mealapply:'🍱',mypay:'💳',parenthome:'👪'};
+const HOME_GROUPS=[
+  {title:'원생 관리',items:['students','register','counsel']},
+  {title:'출결·좌석·급식',items:['seats','attendance','meals']},
+  {title:'학습·상담',items:['schedule','questions','contents']},
+  {title:'공지·소통',items:['board','dm','staffsched']},
+  {title:'운영·관리',items:['dashboard','staff','templates','users']},
+  {title:'내 정보',items:['mystatus','mytimetable','mygrades','mealapply','mypay']},
+  {title:'자녀',items:['parenthome']},
+];
+const PANEL_LABEL={dashboard:'대시보드',seats:'좌석배치도',students:'원생 조회',meals:'급식 현황',counsel:'상담 관리',register:'원생 등록',schedule:'스케줄표',board:'공지·일정',staffsched:'조교 출근표',questions:'질문',contents:'컨텐츠 신청',dm:'DM',attendance:'출결 관리',templates:'발송문자 설정',staff:'직원 관리',users:'사용자 관리',mystatus:'내 출결',mytimetable:'시간표',mygrades:'내 성적',mealapply:'급식 신청',mypay:'납부 목록',parenthome:'자녀 현황',kiosk:'태블릿',home:'홈'};
 const PK_PERIODS=[[1,'8:10~9:15'],[2,'9:30~10:35'],[3,'10:50~12:00'],[4,'13:00~14:00'],[5,'14:15~15:20'],[6,'15:35~16:40'],[7,'16:55~18:00'],[8,'19:00~20:15'],[9,'20:30~21:50'],[10,'22:00~23:00']];
 const PK_TIMETABLE=[['오픈','7:30',''],['준비시간','8:00 ~ 8:10','10분'],['1교시','8:10 ~ 9:15','65분'],['쉬는시간','9:15 ~ 9:30','15분'],['2교시','9:30 ~ 10:35','65분'],['쉬는시간','10:35 ~ 10:50','15분'],['3교시','10:50 ~ 12:00','70분'],['점심시간','12:00 ~ 13:00','60분'],['4교시','13:00 ~ 14:00','60분'],['쉬는시간','14:00 ~ 14:15','15분'],['5교시','14:15 ~ 15:20','65분'],['쉬는시간','15:20 ~ 15:35','15분'],['6교시','15:35 ~ 16:40','65분'],['쉬는시간','16:40 ~ 16:55','15분'],['7교시','16:55 ~ 18:00','65분'],['저녁시간','18:00 ~ 19:00','60분'],['8교시','19:00 ~ 20:15','75분'],['쉬는시간','20:15 ~ 20:30','15분'],['9교시','20:30 ~ 21:50','80분'],['쉬는시간','21:50 ~ 22:00','10분'],['10교시','22:00 ~ 23:00','60분']];
 
@@ -1329,7 +1356,18 @@ function showPanel(p){activePanel=p;document.querySelectorAll('.panel').forEach(
 /* ============ RENDER ============ */
 function canCounsel(){return me.role==='assistant'||me.role==='master'}
 function renderAll(){if(!me)return;
-  ({dashboard:renderDashboard,seats:renderSeats,students:renderStudents,meals:renderMeals,counsel:renderCounsel,attendance:renderAttendance,board:renderBoard,staffsched:renderStaffSched,schedule:renderSchedule,register:renderRegister,questions:renderQuestions,contents:renderContents,dm:renderDM,templates:renderTemplates,staff:renderStaff,users:renderUsers,mystatus:renderMyStatus,mytimetable:renderMyTimetable,mygrades:renderMyGrades,mealapply:renderMealApply,mypay:renderMyPay,parenthome:renderParentHome}[activePanel]||(()=>{}))();
+  ({home:renderHome,dashboard:renderDashboard,seats:renderSeats,students:renderStudents,meals:renderMeals,counsel:renderCounsel,attendance:renderAttendance,board:renderBoard,staffsched:renderStaffSched,schedule:renderSchedule,register:renderRegister,questions:renderQuestions,contents:renderContents,dm:renderDM,templates:renderTemplates,staff:renderStaff,users:renderUsers,mystatus:renderMyStatus,mytimetable:renderMyTimetable,mygrades:renderMyGrades,mealapply:renderMealApply,mypay:renderMyPay,parenthome:renderParentHome}[activePanel]||(()=>{}))();
+}
+function renderHome(){
+  const g=document.getElementById('home-greet');if(g)g.textContent=`${me.name||''} 님, 안녕하세요 👋`;
+  const panels=ROLE_PANELS[me.role].filter(p=>p!=='home');
+  const box=document.getElementById('home-grid');if(!box)return;
+  const card=p=>`<button class="home-card" onclick="showPanel('${p}')"><div class="home-ic">${PANEL_ICON[p]||'•'}</div><div class="home-lb">${PANEL_LABEL[p]||p}</div></button>`;
+  let html='';const used=new Set();
+  HOME_GROUPS.forEach(grp=>{const items=grp.items.filter(p=>panels.includes(p));items.forEach(p=>used.add(p));if(items.length)html+=`<div class="home-sec"><div class="home-sec-t">${grp.title}</div><div class="home-cards">${items.map(card).join('')}</div></div>`;});
+  const rest=panels.filter(p=>!used.has(p));
+  if(rest.length)html+=`<div class="home-sec"><div class="home-sec-t">기타</div><div class="home-cards">${rest.map(card).join('')}</div></div>`;
+  box.innerHTML=html;
 }
 /* ===== seat map / 순찰 ===== */
 function gcls(g){if(!g)return'';if(g.indexOf('N')>=0||g.indexOf('재')>=0)return'g-n';if(g.indexOf('3')>=0)return'g-3';if(g.indexOf('2')>=0)return'g-2';if(g.indexOf('1')>=0)return'g-1';return''}
@@ -1733,7 +1771,7 @@ function closeStaff(){document.getElementById('staffModal').classList.remove('sh
 async function saveStaffPhone(uid){const u=DB.users.find(x=>String(x.id)===String(uid));if(!u)return;const phone=val('staff-phone');u.phone=phone;
   if(sb&&me&&me.real){try{await sb.from('profiles').update({phone}).eq('id',uid);await loadUsers();}catch(e){toast('❌ 실패','profiles에 phone 컬럼이 없으면 features-v80.sql 실행','var(--warn)');}}
   renderStaff();toast('💾 저장','연락처를 저장했습니다.','var(--brand)');}
-function renderMyStatus(){const s=studentById(me.sid);if(!s){document.getElementById('my-name').textContent=me.name;document.getElementById('my-meta').textContent='연결된 학생 정보 없음';return}document.getElementById('my-name').textContent=(s.selfInfo&&s.selfInfo.name)||me.name||s.name||'학생';document.getElementById('my-meta').textContent=`${s.school||''} · ${s.grade||''}`.replace(/^ · | · $/,'');const st=status(s.id);const box=document.getElementById('my-status');box.className='status-big '+st;box.querySelector('.val').textContent={in:'등원했습니다',out:'하원했습니다',none:'아직 등원 전'}[st];const logs=todayLogs(s.id);document.getElementById('my-log').innerHTML=logs.length?logs.map(l=>`<div class="log-row"><span>${l.type==='IN'?'🟢 등원':'🟡 하원'}</span><span class="t">${l.time}</span></div>`).join(''):'<div class="empty">오늘 기록이 없습니다</div>'}
+function renderMyStatus(){renderDdays();const s=studentById(me.sid);if(!s){document.getElementById('my-name').textContent=me.name;document.getElementById('my-meta').textContent='연결된 학생 정보 없음';return}document.getElementById('my-name').textContent=(s.selfInfo&&s.selfInfo.name)||me.name||s.name||'학생';document.getElementById('my-meta').textContent=`${s.school||''} · ${s.grade||''}`.replace(/^ · | · $/,'');const st=status(s.id);const box=document.getElementById('my-status');box.className='status-big '+st;box.querySelector('.val').textContent={in:'등원했습니다',out:'하원했습니다',none:'아직 등원 전'}[st];const logs=todayLogs(s.id);document.getElementById('my-log').innerHTML=logs.length?logs.map(l=>`<div class="log-row"><span>${l.type==='IN'?'🟢 등원':'🟡 하원'}</span><span class="t">${l.time}</span></div>`).join(''):'<div class="empty">오늘 기록이 없습니다</div>'}
 function renderMealApply(){const s=studentById(me.sid);document.getElementById('ma-date').textContent=new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'})+' 신청';if(!s)return;const m=mealOf(s.id,todayStr())||{lunch:false,dinner:false};const setMb=(k,on)=>{const ap=document.getElementById('ap-'+k),cl=document.getElementById('cl-'+k);if(ap){ap.textContent=on?'신청됨 ✓':'신청';ap.className='btn sm '+(on?'meal-on':'primary');ap.disabled=on;}if(cl){cl.className='btn sm '+(on?'cancel-on':'ghost');cl.disabled=!on;cl.style.opacity=on?'1':'.45';}};setMb('lunch',!!m.lunch);setMb('dinner',!!m.dinner);
   ['lunch','dinner'].forEach(k=>{const el=document.getElementById('ms-'+k);const closed=pastMealDeadline(k);el.innerHTML=closed?`<span style="color:var(--warn)">신청 마감됨 (${MEAL_DEADLINE_LABEL[k]})</span>`:MEAL_DEADLINE_LABEL[k]});
   const mm=monthMeals(s.id);document.getElementById('ma-month').textContent=`점심 ${mm.lunch}회 · 저녁 ${mm.dinner}회 (예상 급식비 ${won(mm.fee)})`}
