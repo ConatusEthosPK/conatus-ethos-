@@ -454,7 +454,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v91 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v92 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -574,9 +574,9 @@
       <h2 class="section">상담 관리</h2>
       <div class="subtitle">주 1회 기준. 안 온 학생·미룬 학생은 다음 날 다시 대상으로 올라옵니다.</div>
       <div class="panel-title"><h3>오늘 상담할 학생</h3><span class="hint" id="c-due-count"></span></div>
-      <div class="tbl-card"><table><thead><tr><th>이름</th><th>최근 상담</th><th id="c-act-th">처리</th></tr></thead><tbody id="c-due"></tbody></table></div>
-      <div class="panel-title"><h3>전체 상담 현황</h3></div>
-      <div class="tbl-card"><table><thead><tr><th>이름</th><th>최근 상담일</th><th>다음 예정</th><th>상태</th></tr></thead><tbody id="c-all"></tbody></table></div>
+      <div class="tbl-card"><table><thead><tr><th>계열</th><th>이름</th><th>최근 상담</th><th id="c-act-th">처리</th></tr></thead><tbody id="c-due"></tbody></table></div>
+      <div class="panel-title"><h3>전체 상담 현황 <span style="font-size:12px;color:var(--muted)">· 문과 → 이과 순</span></h3></div>
+      <div class="tbl-card"><table><thead><tr><th>계열</th><th>이름</th><th>최근 상담일</th><th>다음 예정</th><th>상태</th></tr></thead><tbody id="c-all"></tbody></table></div>
     </div>
 
     <!-- REGISTER -->
@@ -593,8 +593,9 @@
         </div>
         <div class="grid g2" style="gap:10px">
           <label class="fld"><span>성별</span><select class="in" id="f-gender"><option value="m">남</option><option value="f">여</option></select></label>
-          <label class="fld"><span>수납일</span><input class="in" id="f-payday" type="number" placeholder="5"></label>
+          <label class="fld"><span>계열</span><select class="in" id="f-track"><option value="문과">문과</option><option value="이과">이과</option></select></label>
         </div>
+        <label class="fld"><span>수납일</span><input class="in" id="f-payday" type="number" placeholder="5"></label>
         <label class="fld"><span>학원비(월)</span><input class="in" id="f-tuition" type="number" placeholder="450000"></label>
         <div class="fld" style="margin-bottom:6px"><span>최근 모의고사 성적 (선택 · 과목별로 원점수/백분위/등급 자유 입력)</span></div>
         <div id="f-block" style="margin-bottom:12px"></div>
@@ -1256,7 +1257,7 @@ async function loadStudents(){
       sb.from('counsel_log').select('*')
     ]);
     if(st.data){
-      DB.students=st.data.map(r=>({id:r.id,name:r.name,phone:r.phone||'',parent:r.parent_phone||'',school:r.school||'',grade:r.grade||'',gender:r.gender||'m',birth:r.birth||'',address:r.address||'',emergency:r.emergency||'',note:r.note||'',tuition:r.tuition||0,payDay:r.pay_day||5,mealFee:0,lastCounsel:r.last_counsel||null,counselDue:r.counsel_due||todayStr(),counselHist:[],grades:[],selfInfo:r.self_info||null,status:r.status||'active',withdrawnAt:r.withdrawn_at||null,paid:!!r.paid,paidAt:r.paid_at||null}));
+      DB.students=st.data.map(r=>({id:r.id,name:r.name,phone:r.phone||'',parent:r.parent_phone||'',school:r.school||'',grade:r.grade||'',gender:r.gender||'m',track:r.track||'문과',birth:r.birth||'',address:r.address||'',emergency:r.emergency||'',note:r.note||'',tuition:r.tuition||0,payDay:r.pay_day||5,mealFee:0,lastCounsel:r.last_counsel||null,counselDue:r.counsel_due||todayStr(),counselHist:[],grades:[],selfInfo:r.self_info||null,status:r.status||'active',withdrawnAt:r.withdrawn_at||null,paid:!!r.paid,paidAt:r.paid_at||null}));
       if(gr.data)gr.data.forEach(g=>{const s=DB.students.find(x=>x.id===g.student_id);if(s)s.grades.push({date:g.date,exam:g.exam,subject:g.subject,score:g.score,std:g.std,percentile:g.percentile,rank:g.rank})});
       if(cl.data)cl.data.forEach(c=>{const s=DB.students.find(x=>x.id===c.student_id);if(s)s.counselHist.push(c.date)});
     }
@@ -1729,7 +1730,14 @@ async function staffSetMeal(name,date,kind){const m=staffMealOf(name,date);const
   if(sb&&me&&me.real){const row={staff:name,date,lunch:m?!!m.lunch:false,dinner:m?!!m.dinner:false};row[kind]=on;const {error}=await sb.from('staff_meals').upsert(row,{onConflict:'staff,date'});if(error){toast('❌ 실패',error.message,'var(--warn)');return}await loadStaffMeals();}
   else{let mm=m;if(!mm){mm={name,date,lunch:false,dinner:false};DB.staffMeals.push(mm)}mm[kind]=on;save();}
   renderMeals();toast(on?'🍽 선생님 급식 추가':'❎ 취소',`${name} 선생님 ${kind==='lunch'?'점심':'저녁'} (${date})`,'var(--meal)');}
-function renderCounsel(){const t=todayStr();const act=canCounsel();const due=DB.students.filter(s=>s.counselDue<=t);document.getElementById('c-due-count').textContent=`${due.length}명 대기`;document.getElementById('c-act-th').textContent=act?'처리':'상태';document.getElementById('c-due').innerHTML=due.length?due.map(s=>`<tr><td><b>${s.name}</b></td><td>${s.lastCounsel||'첫 상담'}</td><td>${act?`<button class="btn in sm" onclick="counselDone(${s.id})">완료</button> <button class="btn sm ghost" onclick="counselDefer(${s.id})">내일로</button>`:'<span class="pill due">상담 필요</span>'}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">오늘 상담할 학생이 없습니다 ✨</td></tr>';document.getElementById('c-all').innerHTML=DB.students.map(s=>{const o=s.counselDue<=t;return `<tr><td><b>${s.name}</b></td><td>${s.lastCounsel||'—'}</td><td>${s.counselDue}</td><td>${o?'<span class="pill due">상담 필요</span>':'<span class="pill done">완료</span>'}</td></tr>`}).join('')}
+function trackTag(s){const tr=s.track||'문과';return `<span class="gradetag" style="background:${tr==='이과'?'rgba(96,165,250,.18)':'rgba(244,114,182,.18)'};color:${tr==='이과'?'#60a5fa':'#f472b6'}">${tr}</span>`;}
+function byTrackName(a,b){const ta=(a.track==='이과')?1:0,tb=(b.track==='이과')?1:0;return ta-tb||(a.name||'').localeCompare(b.name||'','ko');}
+function renderCounsel(){const t=todayStr();const act=canCounsel();const staffSet=staffStudentIds();
+  const pool=DB.students.filter(s=>s.status!=='withdrawn'&&!staffSet.has(String(s.id)));
+  const due=pool.filter(s=>s.counselDue<=t).slice().sort(byTrackName);
+  document.getElementById('c-due-count').textContent=`${due.length}명 대기`;document.getElementById('c-act-th').textContent=act?'처리':'상태';
+  document.getElementById('c-due').innerHTML=due.length?due.map(s=>`<tr><td>${trackTag(s)}</td><td><b>${s.name}</b></td><td>${s.lastCounsel||'첫 상담'}</td><td>${act?`<button class="btn in sm" onclick="counselDone(${s.id})">완료</button> <button class="btn sm ghost" onclick="counselDefer(${s.id})">내일로</button>`:'<span class="pill due">상담 필요</span>'}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">오늘 상담할 학생이 없습니다 ✨</td></tr>';
+  document.getElementById('c-all').innerHTML=pool.slice().sort(byTrackName).map(s=>{const o=s.counselDue<=t;return `<tr><td>${trackTag(s)}</td><td><b>${s.name}</b></td><td>${s.lastCounsel||'—'}</td><td>${s.counselDue}</td><td>${o?'<span class="pill due">상담 필요</span>':'<span class="pill done">완료</span>'}</td></tr>`}).join('')}
 function attTimePicker(sid){const now=new Date();let h=now.getHours();const ap=h<12?'오전':'오후';let h12=h%12;if(h12===0)h12=12;const m=Math.floor(now.getMinutes()/5)*5;
   const apo=['오전','오후'].map(x=>`<option ${x===ap?'selected':''}>${x}</option>`).join('');
   let ho='';for(let i=1;i<=12;i++)ho+=`<option ${i===h12?'selected':''}>${i}</option>`;
@@ -2138,10 +2146,10 @@ async function linkStudent(uid,sid){const v=sid?Number(sid):null;
   renderUsers();toast('🔗 원생 연결',v?'학생 계정을 원생과 연결했습니다.':'연결을 해제했습니다.','var(--brand)')}
 async function addStudent(){const name=val('f-name'),phone=val('f-phone');if(!name||!phone){toast('⚠️ 입력 필요','이름과 학생 휴대폰은 필수입니다.','var(--warn)');return}
   const tuition=parseInt(val('f-tuition'))||450000,payDay=parseInt(val('f-payday'))||5;
-  const seatId=val('f-seat'),gender=val('f-gender')||'m';let newSid=null;
+  const seatId=val('f-seat'),gender=val('f-gender')||'m',track=val('f-track')||'문과';let newSid=null;
   const eg=collectExamGrades('f');
-  if(sb&&me&&me.real){const {error}=await sb.from('students').insert({name,phone,parent_phone:val('f-parent'),school:val('f-school'),grade:val('f-grade'),gender,tuition,pay_day:payDay,note:val('f-note'),counsel_due:todayStr()});if(error){toast('❌ 등록 실패',error.message,'var(--warn)');return}await loadStudents();const ns=DB.students.filter(x=>x.name===name&&x.phone===phone).slice(-1)[0];newSid=ns?ns.id:null;}
-  else{newSid=DB.nextSid;DB.students.push({id:DB.nextSid++,name,phone,parent:val('f-parent'),school:val('f-school'),grade:val('f-grade'),gender,tuition,payDay,mealFee:0,note:val('f-note'),lastCounsel:null,counselDue:todayStr(),counselHist:[],grades:[]});save();}
+  if(sb&&me&&me.real){const {error}=await sb.from('students').insert({name,phone,parent_phone:val('f-parent'),school:val('f-school'),grade:val('f-grade'),gender,track,tuition,pay_day:payDay,note:val('f-note'),counsel_due:todayStr()});if(error){toast('❌ 등록 실패',error.message,'var(--warn)');return}await loadStudents();const ns=DB.students.filter(x=>x.name===name&&x.phone===phone).slice(-1)[0];newSid=ns?ns.id:null;}
+  else{newSid=DB.nextSid;DB.students.push({id:DB.nextSid++,name,phone,parent:val('f-parent'),school:val('f-school'),grade:val('f-grade'),gender,track,tuition,payDay,mealFee:0,note:val('f-note'),lastCounsel:null,counselDue:todayStr(),counselHist:[],grades:[]});save();}
   if(newSid&&eg.exam&&eg.rows.length){
     if(sb&&me&&me.real){await sb.from('grades').insert(eg.rows.map(r=>({student_id:newSid,date:todayStr(),exam:eg.exam,subject:r.subject,score:r.score,std:r.std,percentile:r.percentile,rank:r.rank})));await loadStudents();}
     else{const ns=studentById(newSid);if(ns){eg.rows.forEach(r=>(ns.grades=ns.grades||[]).push({date:todayStr(),exam:eg.exam,subject:r.subject,score:r.score,std:r.std,percentile:r.percentile,rank:r.rank}));save();}}
@@ -2182,6 +2190,7 @@ function openStudent(sid){mdSid=sid;const s=studentById(sid);document.getElement
         <label class="fld"><span>학교</span><input class="in" id="md-e-school" value="${esc(s.school)}"></label>
         <label class="fld"><span>구분</span><select class="in" id="md-e-grade">${GRADES.map(g=>`<option ${s.grade===g?'selected':''}>${g}</option>`).join('')}</select></label>
         <label class="fld"><span>성별</span><select class="in" id="md-e-gender"><option value="m" ${s.gender!=='f'?'selected':''}>남</option><option value="f" ${s.gender==='f'?'selected':''}>여</option></select></label>
+        <label class="fld"><span>계열</span><select class="in" id="md-e-track"><option ${s.track!=='이과'?'selected':''}>문과</option><option ${s.track==='이과'?'selected':''}>이과</option></select></label>
         <label class="fld"><span>학생 연락처</span><input class="in" id="md-e-phone" value="${esc(s.phone)}"></label>
         <label class="fld"><span>학부모 연락처</span><input class="in" id="md-e-parent" value="${esc(s.parent)}"></label>
         <label class="fld"><span>학원비(월)</span><input class="in" type="number" id="md-e-tuition" value="${s.tuition||0}"></label>
@@ -2249,9 +2258,9 @@ function esc(v){return String(v==null?'':v).replace(/"/g,'&quot;')}
 let msgRcpt='parent';
 function setMsgRcpt(r){msgRcpt=r;const p=document.getElementById('rcpt-parent'),st=document.getElementById('rcpt-student');if(p)p.classList.toggle('primary',r==='parent');if(st)st.classList.toggle('primary',r==='student');}
 async function saveStudentInfo(){const sid=mdSid,s=studentById(sid);if(!s)return;
-  const upd={birth:val('md-e-birth'),school:val('md-e-school'),grade:val('md-e-grade'),gender:val('md-e-gender'),phone:val('md-e-phone'),parent_phone:val('md-e-parent'),tuition:parseInt(val('md-e-tuition'))||0,pay_day:parseInt(val('md-e-payday'))||5,address:val('md-e-address'),note:val('md-e-note')};
+  const upd={birth:val('md-e-birth'),school:val('md-e-school'),grade:val('md-e-grade'),gender:val('md-e-gender'),track:val('md-e-track'),phone:val('md-e-phone'),parent_phone:val('md-e-parent'),tuition:parseInt(val('md-e-tuition'))||0,pay_day:parseInt(val('md-e-payday'))||5,address:val('md-e-address'),note:val('md-e-note')};
   if(sb&&me&&me.real){const {error}=await sb.from('students').update(upd).eq('id',sid);if(error){toast('❌ 저장 실패',error.message,'var(--warn)');return}await loadStudents();}
-  else{Object.assign(s,{birth:upd.birth,school:upd.school,grade:upd.grade,gender:upd.gender,phone:upd.phone,parent:upd.parent_phone,tuition:upd.tuition,payDay:upd.pay_day,address:upd.address,note:upd.note});save();}
+  else{Object.assign(s,{birth:upd.birth,school:upd.school,grade:upd.grade,gender:upd.gender,track:upd.track,phone:upd.phone,parent:upd.parent_phone,tuition:upd.tuition,payDay:upd.pay_day,address:upd.address,note:upd.note});save();}
   openStudent(sid);renderAll();toast('💾 저장 완료','학생 정보를 수정했습니다.','var(--brand)');}
 async function togglePaid(sid){const s=studentById(sid);if(!s)return;const np=!s.paid;
   if(sb&&me&&me.real){const {error}=await sb.from('students').update({paid:np,paid_at:np?todayStr():null}).eq('id',sid);if(error){toast('❌ 실패',error.message,'var(--warn)');return}await loadStudents();}
