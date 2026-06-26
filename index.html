@@ -2,8 +2,16 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Conatus Ethos — 독학재수학원 관리</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0f1115">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="에토스">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
 <style>
   :root{
@@ -39,6 +47,7 @@
   body,.topbar,.navtabs,.card,.seat,.tbl-card,.in,.btn,.logout,select,textarea,input,table,th,td,.login-box,.demo-grid button,.zone-nav button,.rolebadge,.shiftcell,.panel-2,.themebtn{transition:background-color .4s ease,color .4s ease,border-color .4s ease,box-shadow .4s ease}
   .themebtn,.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;background:var(--panel-2);border:1px solid var(--line);color:var(--ink);border-radius:50%;font-size:17px;cursor:pointer;line-height:1;position:relative;padding:0;flex-shrink:0}
   .themebtn:hover,.icon-btn:hover{border-color:var(--brand);background:var(--brand-soft)}
+  .themebtn svg,.icon-btn svg{width:21px;height:21px;display:block}
   .icon-btn:active{transform:scale(.92)}
   .notif-badge{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--warn);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);box-sizing:content-box}
   .notif-wrap{position:relative}
@@ -52,6 +61,12 @@
   .notif-item .ni-x{font-weight:600}
   .notif-item .ni-t{font-size:11px;color:var(--muted);margin-top:3px}
   .notif-empty{padding:30px 14px;text-align:center;color:var(--muted);font-size:13px}
+  .notif-perm{padding:11px 14px;background:var(--brand-soft);color:var(--brand);font-size:12.5px;font-weight:700;cursor:pointer;border-bottom:1px solid var(--line);line-height:1.4}
+  .notif-perm:hover{filter:brightness(1.08)}
+  .install-tip{position:fixed;left:16px;right:16px;bottom:16px;max-width:420px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:13px 15px;z-index:140;display:none;font-size:13px;align-items:center;gap:10px}
+  .install-tip.show{display:flex}
+  .install-tip b{color:var(--brand)}
+  .install-tip .it-x{margin-left:auto;cursor:pointer;color:var(--muted);font-size:18px;flex-shrink:0}
   .report-sheet{max-width:660px;margin:0 auto}
   .report-title{text-align:center;font-weight:800;font-size:16px;letter-spacing:-.3px;padding:6px 0 12px}
   .score-tbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
@@ -473,7 +488,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v96 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v98 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -481,7 +496,7 @@
 <div id="app">
   <div class="topbar">
     <div class="logo"><div class="logo-mark">LOGO</div><div><div class="brand-name">Conatus Ethos</div><div class="brand-sub">독학재수</div></div></div>
-    <div class="userchip"><span class="notif-wrap"><button class="icon-btn" id="notif-btn" onclick="toggleNotif(event)" title="알림">🔔<span class="notif-badge" id="notif-badge" style="display:none">0</span></button><div class="notif-panel" id="notif-panel"><div class="notif-head"><span>알림</span><span id="notif-clear" style="font-size:12px;color:var(--brand);font-weight:700;cursor:pointer" onclick="markNotifSeen()">모두 읽음</span></div><div class="notif-list" id="notif-list"></div></div></span><button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="화면 모드 전환"><span id="theme-label" style="font-size:17px;line-height:1">🌙</span></button><span class="rolebadge" id="u-role"></span><span class="uname" id="u-name"></span><button class="logout" onclick="logout()">로그아웃</button></div>
+    <div class="userchip"><span class="notif-wrap"><button class="icon-btn" id="notif-btn" onclick="toggleNotif(event)" title="알림"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="notif-badge" id="notif-badge" style="display:none">0</span></button><div class="notif-panel" id="notif-panel"><div class="notif-head"><span>알림</span><span id="notif-clear" style="font-size:12px;color:var(--brand);font-weight:700;cursor:pointer" onclick="markNotifSeen()">모두 읽음</span></div><div class="notif-list" id="notif-list"></div></div></span><button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="화면 모드 전환"><span id="theme-label" style="font-size:17px;line-height:1">🌙</span></button><span class="rolebadge" id="u-role"></span><span class="uname" id="u-name"></span><button class="logout" onclick="logout()">로그아웃</button></div>
   </div>
   <div class="navtabs" id="navtabs"></div>
   <div class="wrap">
@@ -604,7 +619,7 @@
       <div class="subtitle">신규 원생 정보를 등록합니다.</div>
       <div class="card" style="max-width:520px">
         <label class="fld"><span>학생 이름</span><input class="in" id="f-name" placeholder="예) 김민준"></label>
-        <label class="fld"><span>학생 휴대폰 (등하원 입력용)</span><input class="in" id="f-phone" placeholder="01012345678"></label>
+        <label class="fld"><span>학생 휴대폰 (선택 · 학생 회원가입 시 입력값 반영)</span><input class="in" id="f-phone" placeholder="비워두면 학생 가입 번호 사용"></label>
         <label class="fld"><span>학부모 휴대폰 (문자 수신)</span><input class="in" id="f-parent" placeholder="01098765432"></label>
         <div class="grid g2" style="gap:10px">
           <label class="fld"><span>학교(출신)</span><input class="in" id="f-school" placeholder="○○고"></label>
@@ -861,9 +876,11 @@
   </div>
 </div>
 
+<div class="install-tip" id="install-tip"><span class="it-msg" style="line-height:1.4"></span><button class="btn primary" style="padding:6px 12px;font-size:12.5px" onclick="doInstall()">설치</button><span class="it-x" onclick="hideInstallTip()">✕</span></div>
+
 <!-- MODAL: 성적표 -->
 <div id="reportModal" onclick="if(event.target===this)closeReport()">
-  <div class="modal-box" style="max-width:460px">
+  <div class="modal-box" style="max-width:680px">
     <div class="modal-head"><div><div class="mh-name">📄 성적표</div><div class="mh-sub" id="rep-title">—</div></div><button class="modal-x" onclick="closeReport()">✕</button></div>
     <div class="modal-body">
       <div style="font-size:13px;color:var(--muted);margin-bottom:12px" id="rep-name"></div>
@@ -1382,11 +1399,11 @@ function renderAll(){if(!me)return;
 function notifSeenTs(){try{return +store.getItem('ce_notif_seen')||0}catch(e){return 0}}
 function buildNotifs(){
   if(!me)return [];const out=[];const T=x=>typeof x==='number'?x:(x?new Date(x).getTime():0);
-  (DB.notices||[]).forEach(n=>out.push({tn:T(n.date?n.date+'T09:00':Date.now()),icon:'📢',head:'공지',text:n.title||''}));
+  (DB.notices||[]).forEach(n=>out.push({tn:T(n.date?n.date+'T09:00':(n.id||0)),icon:'📢',head:'공지',text:n.title||''}));
   if(me.role==='student'||me.role==='parent'){
     (DB.questions||[]).filter(q=>String(q.sid)===String(me.sid)&&q.status==='완료'&&q.answer).forEach(q=>out.push({tn:T(q.ts),icon:'💬',head:(q.teacher||'선생님')+' 답변',text:q.answer}));
     (DB.reservations||[]).filter(r=>String(r.sid)===String(me.sid)&&(r.status==='승인'||r.status==='거절')).forEach(r=>out.push({tn:T(r.id),icon:'🛏',head:r.resource+' 예약',text:r.status==='승인'?(r.date+' 승인됨 ✓'):(r.date+' 거절됨')}));
-    (DB.contents||[]).filter(c=>c.popup).forEach(c=>out.push({tn:T(c.date?c.date+'T09:00':Date.now()),icon:'📦',head:'컨텐츠',text:c.title||''}));
+    (DB.contents||[]).filter(c=>c.popup).forEach(c=>out.push({tn:T(c.date?c.date+'T09:00':(c.id||0)),icon:'📦',head:'컨텐츠',text:c.title||''}));
   }else{
     const myQ=(me.role==='assistant')?(DB.questions||[]).filter(q=>q.teacher===me.name||!q.teacher):(DB.questions||[]);
     myQ.filter(q=>q.status==='대기').forEach(q=>out.push({tn:T(q.ts),icon:'❓',head:(q.student||'학생')+' 질문',text:q.subject||q.text||''}));
@@ -1399,7 +1416,43 @@ function renderNotif(){
   const list=document.getElementById('notif-list');const badge=document.getElementById('notif-badge');if(!list||!badge)return;
   const ns=buildNotifs();const seen=notifSeenTs();const unread=ns.filter(n=>n.tn>seen).length;
   if(unread>0){badge.style.display='flex';badge.textContent=unread>99?'99+':unread;}else{badge.style.display='none';}
-  list.innerHTML=ns.length?ns.map(n=>`<div class="notif-item"><span class="ni-ic">${n.icon}</span><div><div><span class="ni-x">${n.head}</span> ${n.text}</div><div class="ni-t">${fmtAgo(n.tn)}</div></div></div>`).join(''):'<div class="notif-empty">새 알림이 없습니다</div>';
+  list.innerHTML=notifPermBanner()+(ns.length?ns.map(n=>`<div class="notif-item"><span class="ni-ic">${n.icon}</span><div><div><span class="ni-x">${n.head}</span> ${n.text}</div><div class="ni-t">${fmtAgo(n.tn)}</div></div></div>`).join(''):'<div class="notif-empty">새 알림이 없습니다</div>');
+}
+function notifSupported(){return ('Notification' in window)&&('serviceWorker' in navigator);}
+function notifPermBanner(){
+  if(!notifSupported())return '';
+  if(Notification.permission==='granted')return '';
+  if(Notification.permission==='denied')return '<div class="notif-perm" style="cursor:default">🔕 폰 알림이 차단돼 있어요. 휴대폰 설정 → 알림에서 허용해 주세요.</div>';
+  return '<div class="notif-perm" onclick="enableNotif()">🔔 폰 알림 켜기 — 새 공지·답변·질문을 휴대폰으로 받기 ›</div>';
+}
+async function enableNotif(){
+  if(!notifSupported()){toast('ℹ️ 미지원','이 브라우저는 알림을 지원하지 않아요.','var(--out)');return;}
+  try{const p=await Notification.requestPermission();
+    if(p==='granted'){notifBaseline();toast('🔔 알림 켜짐','이제 새 소식을 휴대폰으로 받아요.','var(--in)');}
+    else{toast('알림 거부됨','휴대폰 설정에서 나중에 허용할 수 있어요.','var(--out)');}
+  }catch(e){}
+  renderNotif();
+}
+function pushedTs(){try{return +store.getItem('ce_notif_pushed')||0}catch(e){return 0}}
+function notifBaseline(){try{store.setItem('ce_notif_pushed',String(Date.now()))}catch(e){}}
+function fireOS(n){
+  const opt={body:n.text||'',icon:'/icon-192.png',badge:'/icon-192.png',tag:'ce-'+n.tn,data:'/'};
+  if(navigator.serviceWorker&&navigator.serviceWorker.ready){navigator.serviceWorker.ready.then(reg=>reg.showNotification(n.head||'알림',opt)).catch(()=>{try{new Notification(n.head||'알림',opt)}catch(e){}});}
+  else{try{new Notification(n.head||'알림',opt)}catch(e){}}
+}
+function notifyNew(){
+  if(!notifSupported()||Notification.permission!=='granted'||!me)return;
+  const last=pushedTs();const all=buildNotifs();const fresh=all.filter(n=>n.tn>last);
+  if(fresh.length){fresh.slice(0,5).forEach(fireOS);const mx=Math.max(last,...all.map(n=>n.tn||0));store.setItem('ce_notif_pushed',String(mx));}
+}
+async function notifPoll(){
+  if(sb){try{await Promise.all([
+    (typeof loadBoard==='function'?loadBoard():null),
+    (typeof loadQuestions==='function'?loadQuestions():null),
+    (typeof loadReservations==='function'?loadReservations():null),
+    (typeof loadContents==='function'?loadContents():null)
+  ]);}catch(e){}}
+  notifyNew();renderNotif();
 }
 function toggleNotif(e){if(e)e.stopPropagation();const p=document.getElementById('notif-panel');if(!p)return;const open=!p.classList.contains('show');document.querySelectorAll('.notif-panel.show').forEach(x=>x.classList.remove('show'));if(open){p.classList.add('show');renderNotif();}}
 function markNotifSeen(){try{store.setItem('ce_notif_seen',Date.now())}catch(e){}renderNotif();const p=document.getElementById('notif-panel');if(p)p.classList.remove('show');}
@@ -2210,11 +2263,11 @@ async function linkStudent(uid,sid){const v=sid?Number(sid):null;
   if(sb&&me&&me.real){const {error}=await sb.from('profiles').update({student_id:v}).eq('id',uid);if(error){toast('❌ 실패',error.message,'var(--warn)');return}await loadUsers();}
   else{const u=DB.users.find(x=>String(x.id)===String(uid));if(u)u.sid=v;save();}
   renderUsers();toast('🔗 원생 연결',v?'학생 계정을 원생과 연결했습니다.':'연결을 해제했습니다.','var(--brand)')}
-async function addStudent(){const name=val('f-name'),phone=val('f-phone');if(!name||!phone){toast('⚠️ 입력 필요','이름과 학생 휴대폰은 필수입니다.','var(--warn)');return}
+async function addStudent(){const name=val('f-name'),phone=val('f-phone');if(!name){toast('⚠️ 입력 필요','학생 이름은 필수입니다.','var(--warn)');return}
   const tuition=parseInt(val('f-tuition'))||450000,payDay=parseInt(val('f-payday'))||5;
   const seatId=val('f-seat'),gender=val('f-gender')||'m',track=val('f-track')||'문과';let newSid=null;
   const eg=collectExamGrades('f');
-  if(sb&&me&&me.real){const {error}=await sb.from('students').insert({name,phone,parent_phone:val('f-parent'),school:val('f-school'),grade:val('f-grade'),gender,track,tuition,pay_day:payDay,note:val('f-note'),counsel_due:todayStr()});if(error){toast('❌ 등록 실패',error.message,'var(--warn)');return}await loadStudents();const ns=DB.students.filter(x=>x.name===name&&x.phone===phone).slice(-1)[0];newSid=ns?ns.id:null;}
+  if(sb&&me&&me.real){const {error}=await sb.from('students').insert({name,phone,parent_phone:val('f-parent'),school:val('f-school'),grade:val('f-grade'),gender,track,tuition,pay_day:payDay,note:val('f-note'),counsel_due:todayStr()});if(error){toast('❌ 등록 실패',error.message,'var(--warn)');return}await loadStudents();const ns=DB.students.filter(x=>x.name===name&&(phone?x.phone===phone:true)).slice(-1)[0];newSid=ns?ns.id:null;}
   else{newSid=DB.nextSid;DB.students.push({id:DB.nextSid++,name,phone,parent:val('f-parent'),school:val('f-school'),grade:val('f-grade'),gender,track,tuition,payDay,mealFee:0,note:val('f-note'),lastCounsel:null,counselDue:todayStr(),counselHist:[],grades:[]});save();}
   if(newSid&&eg.exam&&eg.rows.length){
     if(sb&&me&&me.real){await sb.from('grades').insert(eg.rows.map(r=>({student_id:newSid,date:todayStr(),exam:eg.exam,subject:r.subject,score:r.score,std:r.std,percentile:r.percentile,rank:r.rank})));await loadStudents();}
@@ -2478,7 +2531,9 @@ function printSchedule(){
 }
 
 /* ============ theme ============ */
-function applyTheme(t){const light=t==='light';document.body.classList.toggle('light',light);['theme-label','theme-label-login'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=light?'☀️':'🌙';});try{store.setItem('ce_theme',t)}catch(e){}}
+const ICON_MOON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+const ICON_SUN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>';
+function applyTheme(t){const light=t==='light';document.body.classList.toggle('light',light);['theme-label','theme-label-login'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=light?ICON_SUN:ICON_MOON;});try{store.setItem('ce_theme',t)}catch(e){}}
 function toggleTheme(){applyTheme(document.body.classList.contains('light')?'dark':'light');}
 
 /* ============ boot ============ */
@@ -2492,6 +2547,33 @@ buildKeys();kdisp();buildDemo();fillGrades('f-grade');fillGrades('s-grade');fill
     try{const {data}=await sb.auth.getSession();if(data&&data.session){await enterReal(data.session.user);return;}}catch(e){console.error('세션 확인 실패',e);}
   }
 })();
+
+/* ============ PWA · 폰 알림 ============ */
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(e=>console.warn('SW 등록 실패',e));});}
+// 알림 권한이 이미 허용돼 있으면 기준선 설정(기존 항목 폭탄 방지)
+(function(){try{if(('Notification' in window)&&Notification.permission==='granted'&&!pushedTs())notifBaseline();}catch(e){}})();
+// 주기 폴링 + 화면 복귀 시 새 알림 확인
+setInterval(()=>{if(me)notifPoll();},60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&me)notifPoll();});
+setTimeout(()=>{if(me)notifPoll();},5000);
+// 설치 안내 배너 (안드로이드 Chrome: beforeinstallprompt, 그 외: 안내문)
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;showInstallTip();});
+function isStandalone(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;}
+function showInstallTip(){
+  try{if(isStandalone()||store.getItem('ce_install_hide'))return;}catch(e){}
+  const el=document.getElementById('install-tip');if(!el)return;
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  el.querySelector('.it-msg').innerHTML=deferredPrompt?'<b>앱 설치</b> — 홈 화면에 에토스를 추가해요':(ios?'<b>홈 화면에 추가</b> — 공유 <span style="font-size:15px">⬆️</span> → “홈 화면에 추가”':'<b>홈 화면에 추가</b> — 브라우저 메뉴에서 “홈 화면에 추가”');
+  el.classList.add('show');
+}
+async function doInstall(){
+  if(deferredPrompt){deferredPrompt.prompt();try{await deferredPrompt.userChoice;}catch(e){}deferredPrompt=null;hideInstallTip();}
+  else{toast('ℹ️ 설치 방법','브라우저 메뉴에서 “홈 화면에 추가”를 눌러주세요.','var(--brand)');}
+}
+function hideInstallTip(){const el=document.getElementById('install-tip');if(el)el.classList.remove('show');try{store.setItem('ce_install_hide','1')}catch(e){}}
+// iOS/기타: beforeinstallprompt 미지원 시 한 번 안내
+window.addEventListener('load',()=>{setTimeout(()=>{if(!deferredPrompt&&!isStandalone())showInstallTip();},3500);});
 </script>
 </body>
 </html>
