@@ -488,7 +488,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v99 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v100 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -1761,9 +1761,10 @@ async function reinstateStudent(sid){
   else{const s=studentById(sid);if(s)s.status='active';save();}
   renderStudents();toast('↩️ 재원 처리','다시 재원 처리되었습니다.','var(--in)');}
 async function deleteStudent(sid){if(!confirm('완전히 삭제하면 복구할 수 없습니다. 정말 삭제할까요?'))return;
-  if(sb&&me&&me.real){await sb.from('students').delete().eq('id',sid);await loadStudents();}
-  else{DB.students=DB.students.filter(s=>s.id!==sid);save();}
-  renderStudents();toast('🗑 삭제','학생을 완전히 삭제했습니다.','var(--warn)');}
+  const seat=homeSeatOf(sid)||(typeof seatOf==='function'?seatOf(sid):null);
+  if(sb&&me&&me.real){if(seat)await sb.from('seats').update({occupant_name:null,student_id:null,present:null,flag:null}).eq('id',seat.id);await sb.from('students').delete().eq('id',sid);await loadStudents();await loadSeats();}
+  else{if(seat){seat.name='';seat.sid=null;seat.present=null;seat.flag=null;}DB.students=DB.students.filter(s=>s.id!==sid);save();}
+  renderStudents();if(activePanel==='seats')renderSeats();toast('🗑 삭제','학생을 완전히 삭제했고, 자리도 공석 처리했어요.','var(--warn)');}
 function toggleSel(sid,cb){if(cb.checked)selectedSids.add(sid);else selectedSids.delete(sid);updateSelCount()}
 function toggleAll(cb){const q=(document.getElementById('st-search').value||'').trim();DB.students.filter(s=>(!q||s.name.includes(q))&&(stFilter==='all'||status(s.id)===stFilter)).forEach(s=>{if(cb.checked)selectedSids.add(s.id);else selectedSids.delete(s.id)});renderStudents()}
 function clearSel(){selectedSids.clear();const a=document.getElementById('st-all');if(a)a.checked=false;renderStudents()}
