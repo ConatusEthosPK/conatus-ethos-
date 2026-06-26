@@ -37,10 +37,29 @@
   :root{--font:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
   body{font-family:var(--font);background:var(--bg-grad);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased}
   body,.topbar,.navtabs,.card,.seat,.tbl-card,.in,.btn,.logout,select,textarea,input,table,th,td,.login-box,.demo-grid button,.zone-nav button,.rolebadge,.shiftcell,.panel-2,.themebtn{transition:background-color .4s ease,color .4s ease,border-color .4s ease,box-shadow .4s ease}
-  .themebtn{display:inline-flex;align-items:center;gap:6px;background:var(--panel-2);border:1px solid var(--line);color:var(--ink);border-radius:20px;padding:7px 13px;font-size:12.5px;font-weight:700;cursor:pointer;line-height:1}
-  .themebtn:hover{border-color:var(--brand)}
-  .themebtn .tdot{width:14px;height:14px;border-radius:50%;background:var(--brand);transition:transform .4s ease}
-  body.light .themebtn .tdot{transform:rotate(180deg)}
+  .themebtn,.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;background:var(--panel-2);border:1px solid var(--line);color:var(--ink);border-radius:50%;font-size:17px;cursor:pointer;line-height:1;position:relative;padding:0;flex-shrink:0}
+  .themebtn:hover,.icon-btn:hover{border-color:var(--brand);background:var(--brand-soft)}
+  .icon-btn:active{transform:scale(.92)}
+  .notif-badge{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--warn);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);box-sizing:content-box}
+  .notif-wrap{position:relative}
+  .notif-panel{position:absolute;top:50px;right:0;width:330px;max-width:86vw;background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);z-index:130;display:none;overflow:hidden}
+  .notif-panel.show{display:block}
+  .notif-head{padding:12px 15px;border-bottom:1px solid var(--line);font-weight:800;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+  .notif-list{max-height:62vh;overflow:auto}
+  .notif-item{padding:11px 15px;border-bottom:1px solid var(--line);display:flex;gap:10px;font-size:13px;align-items:flex-start}
+  .notif-item:last-child{border-bottom:0}
+  .notif-item .ni-ic{font-size:17px;flex-shrink:0;line-height:1.3}
+  .notif-item .ni-x{font-weight:600}
+  .notif-item .ni-t{font-size:11px;color:var(--muted);margin-top:3px}
+  .notif-empty{padding:30px 14px;text-align:center;color:var(--muted);font-size:13px}
+  .report-sheet{max-width:660px;margin:0 auto}
+  .report-title{text-align:center;font-weight:800;font-size:16px;letter-spacing:-.3px;padding:6px 0 12px}
+  .score-tbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+  .score-tbl th,.score-tbl td{border:1px solid var(--muted);padding:9px 4px;text-align:center;word-break:keep-all}
+  .score-tbl th{background:var(--panel-2);font-weight:700;font-size:12px}
+  .score-tbl .rlabel{background:var(--panel-2);font-weight:700;font-size:12px;width:62px}
+  .score-tbl .diag{background-image:linear-gradient(to top right,transparent calc(50% - .7px),var(--muted) calc(50% - .7px),var(--muted) calc(50% + .7px),transparent calc(50% + .7px))}
+  .report-foot{font-size:11px;color:var(--muted);margin-top:10px;text-align:center;line-height:1.5}
   button,input,select,textarea,option{font-family:var(--font)}
   button{font-family:inherit;cursor:pointer}
   input,select,textarea{font-family:inherit}
@@ -454,7 +473,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 마스터만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v93 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v96 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -462,7 +481,7 @@
 <div id="app">
   <div class="topbar">
     <div class="logo"><div class="logo-mark">LOGO</div><div><div class="brand-name">Conatus Ethos</div><div class="brand-sub">독학재수</div></div></div>
-    <div class="userchip"><button class="themebtn" id="theme-btn" onclick="toggleTheme()" title="화면 모드 전환"><span id="theme-label" style="font-size:17px;line-height:1">🌙</span></button><span class="rolebadge" id="u-role"></span><span class="uname" id="u-name"></span><button class="logout" onclick="logout()">로그아웃</button></div>
+    <div class="userchip"><span class="notif-wrap"><button class="icon-btn" id="notif-btn" onclick="toggleNotif(event)" title="알림">🔔<span class="notif-badge" id="notif-badge" style="display:none">0</span></button><div class="notif-panel" id="notif-panel"><div class="notif-head"><span>알림</span><span id="notif-clear" style="font-size:12px;color:var(--brand);font-weight:700;cursor:pointer" onclick="markNotifSeen()">모두 읽음</span></div><div class="notif-list" id="notif-list"></div></div></span><button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="화면 모드 전환"><span id="theme-label" style="font-size:17px;line-height:1">🌙</span></button><span class="rolebadge" id="u-role"></span><span class="uname" id="u-name"></span><button class="logout" onclick="logout()">로그아웃</button></div>
   </div>
   <div class="navtabs" id="navtabs"></div>
   <div class="wrap">
@@ -953,7 +972,7 @@ const ROLE_PANELS={
   director:['dashboard','seats','students','counsel','register','schedule','board','staffsched','questions','contents','dm','templates','staff'],
   assistant:['seats','counsel','register','schedule','attendance','board','staffsched','questions','staff','dm'],
   counter:['seats','students','meals','attendance','register','schedule','board','staffsched','contents','staff','dm','templates'],
-  student:['mystatus','seats','mytimetable','mygrades','mealapply','mypay','board','staffsched','questions','contents','dm'],
+  student:['mystatus','seats','mytimetable','mygrades','mealapply','board','staffsched','questions','contents','dm'],
   parent:['parenthome','board'],
   kiosk:['kiosk']
 };
@@ -1358,7 +1377,33 @@ function showPanel(p){activePanel=p;document.querySelectorAll('.panel').forEach(
 function canCounsel(){return me.role==='assistant'||me.role==='master'}
 function renderAll(){if(!me)return;
   ({home:renderHome,dashboard:renderDashboard,seats:renderSeats,students:renderStudents,meals:renderMeals,counsel:renderCounsel,attendance:renderAttendance,board:renderBoard,staffsched:renderStaffSched,schedule:renderSchedule,register:renderRegister,questions:renderQuestions,contents:renderContents,dm:renderDM,templates:renderTemplates,staff:renderStaff,users:renderUsers,mystatus:renderMyStatus,mytimetable:renderMyTimetable,mygrades:renderMyGrades,mealapply:renderMealApply,mypay:renderMyPay,parenthome:renderParentHome}[activePanel]||(()=>{}))();
+  renderNotif();
 }
+function notifSeenTs(){try{return +store.getItem('ce_notif_seen')||0}catch(e){return 0}}
+function buildNotifs(){
+  if(!me)return [];const out=[];const T=x=>typeof x==='number'?x:(x?new Date(x).getTime():0);
+  (DB.notices||[]).forEach(n=>out.push({tn:T(n.date?n.date+'T09:00':Date.now()),icon:'📢',head:'공지',text:n.title||''}));
+  if(me.role==='student'||me.role==='parent'){
+    (DB.questions||[]).filter(q=>String(q.sid)===String(me.sid)&&q.status==='완료'&&q.answer).forEach(q=>out.push({tn:T(q.ts),icon:'💬',head:(q.teacher||'선생님')+' 답변',text:q.answer}));
+    (DB.reservations||[]).filter(r=>String(r.sid)===String(me.sid)&&(r.status==='승인'||r.status==='거절')).forEach(r=>out.push({tn:T(r.id),icon:'🛏',head:r.resource+' 예약',text:r.status==='승인'?(r.date+' 승인됨 ✓'):(r.date+' 거절됨')}));
+    (DB.contents||[]).filter(c=>c.popup).forEach(c=>out.push({tn:T(c.date?c.date+'T09:00':Date.now()),icon:'📦',head:'컨텐츠',text:c.title||''}));
+  }else{
+    const myQ=(me.role==='assistant')?(DB.questions||[]).filter(q=>q.teacher===me.name||!q.teacher):(DB.questions||[]);
+    myQ.filter(q=>q.status==='대기').forEach(q=>out.push({tn:T(q.ts),icon:'❓',head:(q.student||'학생')+' 질문',text:q.subject||q.text||''}));
+    (DB.reservations||[]).filter(r=>r.status==='대기').forEach(r=>out.push({tn:T(r.id),icon:'🛏',head:'예약 요청',text:(r.student||'')+' · '+r.resource}));
+  }
+  return out.sort((a,b)=>b.tn-a.tn).slice(0,30);
+}
+function fmtAgo(tn){if(!tn)return'';const d=Date.now()-tn;const m=Math.floor(d/60000);if(m<1)return'방금';if(m<60)return m+'분 전';const h=Math.floor(m/60);if(h<24)return h+'시간 전';const dd=Math.floor(h/24);if(dd<7)return dd+'일 전';return new Date(tn).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'});}
+function renderNotif(){
+  const list=document.getElementById('notif-list');const badge=document.getElementById('notif-badge');if(!list||!badge)return;
+  const ns=buildNotifs();const seen=notifSeenTs();const unread=ns.filter(n=>n.tn>seen).length;
+  if(unread>0){badge.style.display='flex';badge.textContent=unread>99?'99+':unread;}else{badge.style.display='none';}
+  list.innerHTML=ns.length?ns.map(n=>`<div class="notif-item"><span class="ni-ic">${n.icon}</span><div><div><span class="ni-x">${n.head}</span> ${n.text}</div><div class="ni-t">${fmtAgo(n.tn)}</div></div></div>`).join(''):'<div class="notif-empty">새 알림이 없습니다</div>';
+}
+function toggleNotif(e){if(e)e.stopPropagation();const p=document.getElementById('notif-panel');if(!p)return;const open=!p.classList.contains('show');document.querySelectorAll('.notif-panel.show').forEach(x=>x.classList.remove('show'));if(open){p.classList.add('show');renderNotif();}}
+function markNotifSeen(){try{store.setItem('ce_notif_seen',Date.now())}catch(e){}renderNotif();const p=document.getElementById('notif-panel');if(p)p.classList.remove('show');}
+document.addEventListener('click',e=>{const p=document.getElementById('notif-panel');if(p&&p.classList.contains('show')&&!e.target.closest('.notif-wrap')){p.classList.remove('show');try{store.setItem('ce_notif_seen',Date.now())}catch(_){}renderNotif();}});
 function renderHome(){
   const g=document.getElementById('home-greet');if(g)g.textContent=`${me.name||''} 님, 안녕하세요 👋`;
   const panels=ROLE_PANELS[me.role].filter(p=>p!=='home');
@@ -2098,10 +2143,31 @@ const SUBJ_ORDER=['국어','수학','영어','한국사','사회탐구','과학�
 function subjGroup(sub){if(['언어와매체','화법과작문'].includes(sub))return'국어';if(['확률과통계','미적분','기하'].includes(sub))return'수학';if(sub==='영어')return'영어';if(sub==='한국사')return'한국사';if(TAMGU_SOC.includes(sub))return'사회탐구';if(TAMGU_SCI.includes(sub))return'과학탐구';return sub;}
 function openReport(sid,exam){const s=studentById(sid);const rows=((s&&s.grades)||[]).filter(x=>x.exam===exam);
   document.getElementById('rep-title').textContent=exam;
-  document.getElementById('rep-name').textContent=(s?s.name:'')+(s&&s.grade?' · '+s.grade:'');
+  document.getElementById('rep-name').textContent='';
   const v=x=>x!=null&&x!==''?x:'-';
-  const body=rows.slice().sort((a,b)=>SUBJ_ORDER.indexOf(subjGroup(a.subject))-SUBJ_ORDER.indexOf(subjGroup(b.subject))).map(x=>`<tr><td style="text-align:left"><b>${subjGroup(x.subject)}</b><div style="font-size:10px;color:var(--muted)">${x.subject}</div></td><td>${v(x.score)}</td><td>${v(x.std)}</td><td>${v(x.percentile)}</td><td><b>${v(x.rank)}</b></td></tr>`).join('');
-  document.getElementById('rep-body').innerHTML=`<div style="overflow-x:auto"><table class="rep-tbl"><thead><tr><th style="text-align:left">영역</th><th>원점수</th><th>표준점수</th><th>백분위</th><th>등급</th></tr></thead><tbody>${body||'<tr><td colspan=5 class=empty>과목 없음</td></tr>'}</tbody></table></div>`;
+  const byG={};rows.forEach(x=>{const g=subjGroup(x.subject);(byG[g]=byG[g]||[]).push(x);});
+  const tamgu=[...(byG['사회탐구']||[]),...(byG['과학탐구']||[]),...(byG['탐구']||[])];
+  const lang=(byG['제2외국어']||byG['제2외국어/한문']||[])[0];
+  const cols=[];
+  cols.push({head:'한국사',abs:true,d:(byG['한국사']||[])[0]});
+  cols.push({head:'국어',d:(byG['국어']||[])[0]});
+  cols.push({head:'수학',d:(byG['수학']||[])[0]});
+  cols.push({head:'영어',abs:true,d:(byG['영어']||[])[0]});
+  if(tamgu[0])cols.push({head:'탐구',d:tamgu[0]});
+  if(tamgu[1])cols.push({head:'탐구',d:tamgu[1]});
+  if(lang)cols.push({head:'제2외국어/한문',abs:true,d:lang});
+  // header (merge consecutive 탐구)
+  let head='<tr><td class="rlabel"></td>',i=0;
+  while(i<cols.length){if(cols[i].head==='탐구'){let n=0;while(i+n<cols.length&&cols[i+n].head==='탐구')n++;head+=`<th colspan="${n}">탐구</th>`;i+=n;}else{head+=`<th>${cols[i].head}</th>`;i++;}}
+  head+='</tr>';
+  const rowF=(label,fn)=>`<tr><td class="rlabel">${label}</td>${cols.map(fn).join('')}</tr>`;
+  const rSel=rowF('선택과목',c=>c.abs?'<td class="diag"></td>':`<td>${v(c.d&&c.d.subject)}</td>`);
+  const rStd=rowF('표준점수',c=>c.abs?'<td class="diag"></td>':`<td>${v(c.d&&c.d.std)}</td>`);
+  const rPct=rowF('백분위',c=>c.abs?'<td class="diag"></td>':`<td>${v(c.d&&c.d.percentile)}</td>`);
+  const rRnk=rowF('등급',c=>`<td style="font-weight:800;font-size:15px">${v(c.d&&c.d.rank)}</td>`);
+  const info=`<table class="score-tbl"><tr><th>성 명</th><th>구 분</th><th>성 별</th><th>출신 · 계열</th></tr><tr><td>${s?s.name:'-'}</td><td>${(s&&s.grade)||'-'}</td><td>${s&&s.gender==='f'?'여':'남'}</td><td>${((s&&s.school)||'-')+' · '+((s&&s.track)||'문과')}</td></tr></table>`;
+  const grid=`<table class="score-tbl" style="margin-top:-1px">${head}${rSel}${rStd}${rPct}${rRnk}</table>`;
+  document.getElementById('rep-body').innerHTML=rows.length?`<div class="report-sheet"><div class="report-title">${exam} 성적통지표</div>${info}${grid}<div class="report-foot">※ 영어 · 한국사 · 제2외국어/한문은 절대평가로 등급만 표기됩니다.</div></div>`:'<div class="empty">등록된 과목이 없습니다</div>';
   document.getElementById('reportModal').classList.add('show');}
 function closeReport(){document.getElementById('reportModal').classList.remove('show');}
 function payItems(s){const hm=halfMeals(s.id);const M=new Date().getMonth()+1;const mealDue=hm.half==='상'?'매월 15일 (상반기)':'매월 말일 (하반기)';return [
@@ -2316,7 +2382,10 @@ async function kiosk(type){if(!kbuf){toast('⚠️ 번호 입력','휴대폰 번
   }
   if(matches.length===0){toast('❓ 학생 없음','일치하는 번호가 없습니다. 전체번호 또는 앞/뒷 4자리를 입력해 주세요.','var(--warn)');kbuf='';kdisp();return}
   if(matches.length>1){toast('⚠️ 번호 중복','중복 원생이 있어요. <b>전체 번호</b>를 입력해 주세요.','var(--warn)');kbuf='';kdisp();return}
-  const s=matches[0];await mark(s.id,type);const verb=type==='IN'?'등원':'하원';toast(`${type==='IN'?'🟢':'🟡'} ${verb} 완료 — ${s.name}`,`${nowTime()} · 학부모에게 문자가 발송되었습니다.`,type==='IN'?'var(--in)':'var(--out)');kbuf='';kdisp()}
+  const s=matches[0];const cur=status(s.id);
+  if(type==='IN'&&cur==='in'){toast('ℹ️ 이미 등원',`${s.name}님은 이미 등원했습니다.`,'var(--out)');kbuf='';kdisp();return}
+  if(type==='OUT'&&cur==='out'){toast('ℹ️ 이미 하원',`${s.name}님은 이미 하원했습니다.`,'var(--out)');kbuf='';kdisp();return}
+  await mark(s.id,type);const verb=type==='IN'?'등원':'하원';toast(`${type==='IN'?'🟢':'🟡'} ${verb} 완료 — ${s.name}`,`${nowTime()} · 학부모에게 문자가 발송되었습니다.`,type==='IN'?'var(--in)':'var(--out)');kbuf='';kdisp()}
 
 /* ============ toast ============ */
 let toastTimer;
