@@ -77,6 +77,10 @@
   .score-tbl .rlabel{background:var(--panel-2);font-weight:700;font-size:12px;width:62px}
   .score-tbl .diag{background-image:linear-gradient(to top right,transparent calc(50% - .7px),var(--muted) calc(50% - .7px),var(--muted) calc(50% + .7px),transparent calc(50% + .7px))}
   .report-foot{font-size:11px;color:var(--muted);margin-top:10px;text-align:center;line-height:1.5}
+  .chart-t{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px}
+  .chart-lg{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--muted)}
+  .chart-lg span{display:inline-flex;align-items:center;gap:4px}
+  .chart-lg i{width:10px;height:10px;border-radius:2px;display:inline-block}
   button,input,select,textarea,option{font-family:var(--font)}
   button{font-family:inherit;cursor:pointer}
   input,select,textarea{font-family:inherit}
@@ -490,7 +494,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 관리자만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v103 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v106 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -539,7 +543,7 @@
       <div class="subtitle">신입생 첫 상담용. 학생·월을 고르고 과목별 교재·하루 분량을 넣은 뒤 <b>자동 채우기</b>를 누르면 한 달 표가 완성됩니다. 칸은 직접 수정 가능하고, <b>인쇄</b>해서 학생과 함께 쓰세요. (하루 순서: 국·수·영·탐)</div>
       <div class="card no-print" style="max-width:760px">
         <div class="grid g2" style="gap:10px">
-          <label class="fld"><span>학생</span><select class="in" id="msch-student"></select></label>
+          <label class="fld"><span>학생</span><select class="in" id="msch-student" onchange="updateSchedHead()"></select></label>
           <label class="fld"><span>시작일 (기본: 내일부터 30일)</span><input class="in" type="date" id="msch-start" onchange="buildScheduleTable()"></label>
         </div>
         <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">과목마다 교재/내용을 <b>여러 개 추가</b>할 수 있어요. 각 줄에서 <b>요일</b>(중복 선택)과 <b>분량</b>(시간/강)을 정하세요. 예: 탐구1 — 월·수·금 생활과윤리, 탐구2 — 화·목·금 사회문화.</div>
@@ -2523,6 +2527,7 @@ function renderSchedule(){
   const st=document.getElementById('msch-start');if(st&&!st.value){const d=new Date();d.setDate(d.getDate()+1);st.value=fmtDate(d);}
   ensureSchItems();
   if(!document.querySelector('#msch-table table'))buildScheduleTable();
+  updateSchedHead();
 }
 const SCH_WD=['월','화','수','목','금','토','일'];
 const SCH_GROUPS=['국어','수학','영어','탐구1','탐구2'];
@@ -2568,21 +2573,28 @@ function aiFillSchedule(){const txt=(document.getElementById('sch-ai').value||''
   if(added)toast('✨ 자동 작성',`${added}개 항목을 채웠어요. 확인 후 [자동 채우기]를 누르세요.`,'var(--brand)');}
 function buildScheduleTable(contentFn){
   const box=document.getElementById('msch-table');if(!box)return;
-  const start=schedStartDate();const DAYS=30;const end=new Date(start);end.setDate(end.getDate()+DAYS-1);
-  const WD=['일','월','화','수','목','금','토'];
-  let h='<table class="cal-tbl"><thead><tr>'+WD.map((w,i)=>`<th class="${i===0?'sun':''}">${w}</th>`).join('')+'</tr></thead><tbody><tr>';
-  const cur=new Date(start);cur.setDate(cur.getDate()-cur.getDay());
-  while(true){
+  const start=schedStartDate();const DAYS=30;
+  const WDfull=['일','월','화','수','목','금','토'];
+  const startDow=start.getDay();
+  // 요일 헤더를 "시작일의 요일"부터 정렬 → 시작일이 항상 첫 칸
+  const WD=[];for(let i=0;i<7;i++)WD.push(WDfull[(startDow+i)%7]);
+  let h='<table class="cal-tbl"><thead><tr>'+WD.map(w=>`<th class="${w==='일'?'sun':''}">${w}</th>`).join('')+'</tr></thead><tbody>';
+  const cur=new Date(start);let count=0;
+  while(count<DAYS){
+    h+='<tr>';
     for(let c=0;c<7;c++){
-      const inR=cur>=start&&cur<=end;
-      if(inR){const dnum=cur.getDate();const lbl=(dnum===1||cur.getTime()===start.getTime())?`${cur.getMonth()+1}/${dnum}`:`${dnum}`;const content=contentFn?(contentFn(new Date(cur))||''):'';h+=`<td class="cal-cell ${cur.getDay()===0?'sun':''}"><div class="cal-d">${lbl}</div><div class="cal-body" contenteditable="true">${content}</div></td>`;}
-      else h+='<td class="cal-empty"></td>';
-      cur.setDate(cur.getDate()+1);
+      if(count<DAYS){
+        const dnum=cur.getDate();
+        const lbl=(dnum===1)?`${cur.getMonth()+1}월 1일`:`${dnum}일`;
+        const content=contentFn?(contentFn(new Date(cur))||''):'';
+        h+=`<td class="cal-cell ${cur.getDay()===0?'sun':''}"><div class="cal-d">${lbl}</div><div class="cal-body" contenteditable="true">${content}</div></td>`;
+        cur.setDate(cur.getDate()+1);count++;
+      }else h+='<td class="cal-empty"></td>';
     }
     h+='</tr>';
-    if(cur>end)break;h+='<tr>';
   }
   h+='</tbody></table>';box.innerHTML=h;
+  updateSchedHead();
 }
 function genSchedule(){
   const items=collectSchItems();
@@ -2590,12 +2602,18 @@ function genSchedule(){
   buildScheduleTable((date)=>{const wd=SCH_WD[(date.getDay()+6)%7];const todays=items.filter(it=>it.days.includes(wd));return todays.length?todays.map(schLine).join('\n'):'';});
   toast('🗓 달력 생성','요일별로 채웠어요. 칸을 눌러 수정할 수 있어요.','var(--brand)');
 }
+function seatLabelOf(sid){const s=(typeof homeSeatOf==='function')?homeSeatOf(sid):null;return s&&s.label?s.label:'';}
+function updateSchedHead(){
+  const el=document.getElementById('msch-h-name');if(!el)return;
+  const sid=(document.getElementById('msch-student')||{}).value;const s=sid?studentById(Number(sid)):null;
+  const seat=s?seatLabelOf(s.id):'';
+  el.textContent=s?(s.name+(seat?(' (좌석 '+seat+'번)'):'')):'________';
+  const start=schedStartDate();const end=new Date(start);end.setDate(end.getDate()+29);
+  const m=document.getElementById('msch-h-month');if(m)m.textContent=`${fmtDate(start)} ~ ${fmtDate(end)}`;
+}
 function printSchedule(){
   if(!document.querySelector('#msch-table table')){toast('⚠️ 표 없음','먼저 표를 만들어주세요.','var(--warn)');return;}
-  const sid=document.getElementById('msch-student').value;const s=sid?studentById(Number(sid)):null;
-  const start=schedStartDate();const end=new Date(start);end.setDate(end.getDate()+29);
-  document.getElementById('msch-h-name').textContent=s?(s.name+(s.grade?' ('+s.grade+')':'')):'________';
-  document.getElementById('msch-h-month').textContent=`${fmtDate(start)} ~ ${fmtDate(end)}`;
+  updateSchedHead();
   window.print();
 }
 
