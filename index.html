@@ -436,10 +436,18 @@
   .cal-tbl th.sun{color:var(--warn)}
   .cal-cell{border:1px solid var(--line);height:96px;vertical-align:top;padding:3px 4px}
   .cal-empty{border:1px solid var(--line);background:var(--panel)}
-  .cal-d{font-size:12px;font-weight:700;margin-bottom:2px}
-  .cal-cell.sun .cal-d{color:var(--warn)}
-  .cal-body{font-size:11px;line-height:1.4;white-space:pre-line;min-height:62px;cursor:text}
+  .cal-d{font-size:calc(var(--sched-fs,11px) + 1px);font-weight:700;background:var(--panel-2);margin:-3px -4px 4px;padding:2px 6px;border-bottom:1px solid var(--line)}
+  .cal-cell.sun .cal-d{color:var(--ink)}
+  .cal-body{font-size:var(--sched-fs,11px);line-height:1.35;white-space:pre-line;min-height:62px;cursor:text}
   .cal-body:focus{outline:2px solid var(--brand);outline-offset:-2px;background:var(--brand-soft)}
+  /* 시안 E · 날짜 헤더바 + 불릿 리스트 */
+  .cal-body .bl{display:flex;align-items:flex-start;gap:4px;line-height:1.3;margin-bottom:3px}
+  .cal-body .bl::before{content:"·";flex:none;font-weight:700}
+  .cal-body .bl .sj{font-weight:600}
+  .cal-body .bl .h{margin-left:auto;padding-left:6px;color:var(--muted);white-space:nowrap}
+  /* 2장 맞춤 측정용: 셀 높이를 내용에 맞게(고정높이 해제) */
+  .sched-measure .cal-cell{height:auto!important}
+  .sched-measure .cal-body{min-height:0!important}
   @media print{
     @page{size:A4 landscape;margin:9mm}
     body{background:#fff!important;color:#000!important}
@@ -450,7 +458,10 @@
     .sch-title,.sch-meta,.sch-meta b{color:#000!important}
     .cal-tbl th{background:#eee!important;color:#000!important;border:1px solid #999!important}
     .cal-tbl td{border:1px solid #999!important;color:#000!important}
-    .cal-cell{height:104px}
+    .cal-cell{height:auto;min-height:0;padding:2px 3px;vertical-align:top}
+    .cal-body{min-height:0!important}
+    .cal-d{margin:-2px -3px 3px!important;padding:2px 5px;background:#eee!important;border-bottom:1px solid #999!important;color:#000!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .cal-body .bl .h{color:#333!important}
     .cal-body:focus{outline:0;background:transparent!important}
   }
 </style>
@@ -494,7 +505,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 관리자만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v106 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v110 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -544,7 +555,7 @@
       <div class="card no-print" style="max-width:760px">
         <div class="grid g2" style="gap:10px">
           <label class="fld"><span>학생</span><select class="in" id="msch-student" onchange="updateSchedHead()"></select></label>
-          <label class="fld"><span>시작일 (기본: 내일부터 30일)</span><input class="in" type="date" id="msch-start" onchange="buildScheduleTable()"></label>
+          <label class="fld"><span>시작일 (그 주 월요일로 자동 정렬 · 30일)</span><input class="in" type="date" id="msch-start" onchange="buildScheduleTable()"></label>
         </div>
         <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">과목마다 교재/내용을 <b>여러 개 추가</b>할 수 있어요. 각 줄에서 <b>요일</b>(중복 선택)과 <b>분량</b>(시간/강)을 정하세요. 예: 탐구1 — 월·수·금 생활과윤리, 탐구2 — 화·목·금 사회문화.</div>
         <div id="sch-groups"></div>
@@ -829,6 +840,7 @@
   <div class="modal-box" style="max-width:360px">
     <div class="modal-head"><div><div class="mh-name" id="sm-name">—</div><div class="mh-sub" id="sm-sub">—</div></div><button class="modal-x" onclick="closeSeatModal()">✕</button></div>
     <div class="modal-body">
+      <button class="btn primary" id="sm-gostudent" style="width:100%;margin-bottom:14px;display:none" onclick="goToStudentFromSeat()">👤 이 학생 정보 보기</button>
       <div id="sm-state" style="font-size:13px;color:var(--muted);margin-bottom:14px"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <button class="btn in" onclick="setPresence(true)">🟢 재석</button>
@@ -1669,10 +1681,13 @@ async function cancelApplySelf(id){const s=DB.seats.find(x=>x.id===id);if(!s)ret
   else{s.name='';s.sid=null;s.present=null;s.flag=null;save();}
   renderSeats();toast('취소','신청을 취소했어요.','var(--out)');}
 let seatPopupId=null;
+function seatStudentId(s){if(!s)return null;if(s.sid!=null){const b=studentById(Number(s.sid))||studentById(s.sid);if(b)return b.id;}const m=DB.students.find(x=>x.name===s.name&&x.status!=='withdrawn');return m?m.id:null;}
+function goToStudentFromSeat(){const s=DB.seats.find(x=>x.id===seatPopupId);if(!s)return;const sid=seatStudentId(s);if(sid==null){toast('ℹ️ 연결 없음','이 자리에 연결된 원생 정보를 찾지 못했어요.','var(--out)');return;}closeSeatModal();openStudent(sid);}
 function openSeatPopup(id){const s=DB.seats.find(x=>x.id===id);if(!s||!s.name)return;seatPopupId=id;
   document.getElementById('sm-name').textContent=s.name;
   document.getElementById('sm-sub').textContent=`${s.zone} ${s.label} · ${s.grade||''}`;
   document.getElementById('sm-state').textContent='현재 상태: '+(s.present?('재석 · '+(s.flag||'정상')):'공석');
+  const gid=seatStudentId(s);const gb=document.getElementById('sm-gostudent');if(gb)gb.style.display=gid!=null?'block':'none';
   document.getElementById('seatModal').classList.add('show');
 }
 async function setPresence(p){const s=DB.seats.find(x=>x.id===seatPopupId);if(!s)return;const flag=p?s.flag:null;
@@ -2519,7 +2534,7 @@ function toast(title,body,color){const el=document.getElementById('toast');el.st
 
 /* ============ 월간 학습 스케줄표 ============ */
 const SCH_SUBJECTS=[['kor','국어'],['mat','수학'],['eng','영어'],['tam','탐구']];
-function schedStartDate(){const v=(document.getElementById('msch-start')||{}).value;if(v)return new Date(v+'T00:00:00');const d=new Date();d.setDate(d.getDate()+1);d.setHours(0,0,0,0);return d;}
+function schedStartDate(){const v=(document.getElementById('msch-start')||{}).value;let d;if(v)d=new Date(v+'T00:00:00');else{d=new Date();d.setDate(d.getDate()+1);}d.setHours(0,0,0,0);const dow=d.getDay();d.setDate(d.getDate()-(dow===0?6:dow-1));return d;}/* 무조건 그 주의 월요일로 */
 function fmtDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function renderSchedule(){
   const sel=document.getElementById('msch-student');
@@ -2596,10 +2611,11 @@ function buildScheduleTable(contentFn){
   h+='</tbody></table>';box.innerHTML=h;
   updateSchedHead();
 }
+function schItemLi(it){const pre=(it.g==='탐구1'||it.g==='탐구2')?'':it.g+' ';const sj=esc(pre+it.text);const amt=it.amt?`<span class="h">${esc(String(it.amt)+(it.unit||''))}</span>`:'';return `<div class="bl"><span class="sj">${sj}</span>${amt}</div>`;}
 function genSchedule(){
   const items=collectSchItems();
   if(!items.length){toast('⚠️ 입력 필요','과목·요일을 1개 이상 입력하세요.','var(--warn)');return;}
-  buildScheduleTable((date)=>{const wd=SCH_WD[(date.getDay()+6)%7];const todays=items.filter(it=>it.days.includes(wd));return todays.length?todays.map(schLine).join('\n'):'';});
+  buildScheduleTable((date)=>{const wd=SCH_WD[(date.getDay()+6)%7];const todays=items.filter(it=>it.days.includes(wd));return todays.length?todays.map(schItemLi).join(''):'';});
   toast('🗓 달력 생성','요일별로 채웠어요. 칸을 눌러 수정할 수 있어요.','var(--brand)');
 }
 function seatLabelOf(sid){const s=(typeof homeSeatOf==='function')?homeSeatOf(sid):null;return s&&s.label?s.label:'';}
@@ -2611,9 +2627,32 @@ function updateSchedHead(){
   const start=schedStartDate();const end=new Date(start);end.setDate(end.getDate()+29);
   const m=document.getElementById('msch-h-month');if(m)m.textContent=`${fmtDate(start)} ~ ${fmtDate(end)}`;
 }
+// 인쇄가 maxPages(2장)를 넘지 않도록 셀 폰트를 자동으로 줄임
+function fitSchedToPages(maxPages){
+  const area=document.getElementById('msch-print-area');if(!area)return ()=>{};
+  const PXMM=3.779527;                       // 96dpi 기준 1mm
+  const pageH=(210-18)*PXMM;                  // A4 가로 인쇄가능 높이(상하 9mm 여백)
+  const pageW=(297-18)*PXMM;                  // 인쇄가능 폭
+  const maxH=pageH*maxPages-6;                // 약간의 안전여유
+  const prevW=area.style.width;
+  area.classList.add('sched-measure');
+  area.style.width=pageW+'px';
+  let fs=11;                                  // 기본 셀 폰트(px)
+  area.style.setProperty('--sched-fs',fs+'px');
+  let guard=0;
+  while(area.scrollHeight>maxH && fs>5.5 && guard<70){fs-=0.5;area.style.setProperty('--sched-fs',fs+'px');guard++;}
+  area.classList.remove('sched-measure');
+  area.style.width=prevW;
+  // 결정된 폰트(--sched-fs)는 인쇄 동안 유지 → 끝나면 복구
+  return ()=>area.style.removeProperty('--sched-fs');
+}
 function printSchedule(){
   if(!document.querySelector('#msch-table table')){toast('⚠️ 표 없음','먼저 표를 만들어주세요.','var(--warn)');return;}
   updateSchedHead();
+  const restore=fitSchedToPages(2);
+  const done=()=>{restore();window.removeEventListener('afterprint',done);};
+  window.addEventListener('afterprint',done);
+  setTimeout(done,4000);                       // afterprint 미지원 브라우저 대비
   window.print();
 }
 
