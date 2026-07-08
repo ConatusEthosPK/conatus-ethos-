@@ -505,7 +505,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 관리자만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v111 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v112 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -1410,21 +1410,32 @@ async function logout(){try{if(sb&&me&&me.real)await sb.auth.signOut();}catch(e)
 /* ============ SHELL ============ */
 let activePanel=null;
 function buildShell(){
-  document.getElementById('u-name').textContent=me.name||me.email||'사용자';
-  const rb=document.getElementById('u-role');rb.textContent=ROLE_LABEL[me.role];rb.className='rolebadge '+me.role;
-  const panels=ROLE_PANELS[me.role];
-  document.getElementById('navtabs').innerHTML=panels.map(p=>`<button data-p="${p}">${PANEL_LABEL[p]}</button>`).join('');
-  document.querySelectorAll('#navtabs button').forEach(b=>b.onclick=()=>showPanel(b.dataset.p));
-  document.getElementById('navtabs').style.display=panels.length===1?'none':'flex';
-  showPanel(panels[0]);
+  try{
+    document.getElementById('u-name').textContent=me.name||me.email||'사용자';
+    const rb=document.getElementById('u-role');rb.textContent=ROLE_LABEL[me.role]||'';rb.className='rolebadge '+(me.role||'');
+    let panels=ROLE_PANELS[me.role];
+    if(!panels||!panels.length){console.warn('알 수 없는 역할:',me.role,'→ 학생 화면으로 대체');panels=ROLE_PANELS['student'];}
+    document.getElementById('navtabs').innerHTML=panels.map(p=>`<button data-p="${p}">${PANEL_LABEL[p]}</button>`).join('');
+    document.querySelectorAll('#navtabs button').forEach(b=>b.onclick=()=>showPanel(b.dataset.p));
+    document.getElementById('navtabs').style.display=panels.length===1?'none':'flex';
+    showPanel(panels[0]);
+  }catch(e){console.error('화면 구성 오류',e);shellError(e);}
 }
-function showPanel(p){activePanel=p;document.querySelectorAll('.panel').forEach(x=>x.classList.remove('show'));document.getElementById('p-'+p).classList.add('show');document.querySelectorAll('#navtabs button').forEach(b=>b.classList.toggle('active',b.dataset.p===p));renderAll()}
+function shellError(e){
+  const box=document.querySelector('.container')||document.getElementById('app');if(!box)return;
+  let d=document.getElementById('shell-error');if(!d){d=document.createElement('div');d.id='shell-error';box.prepend(d);}
+  d.style.cssText='margin:20px;padding:16px 18px;border:1px solid var(--warn);border-radius:12px;background:var(--warn-soft);color:var(--ink);font-size:14px;line-height:1.6';
+  d.innerHTML='⚠️ 화면을 불러오는 중 문제가 생겼어요. 서버(데이터) 접근이 막혔을 가능성이 큽니다.<br>· 보안(RLS) SQL을 실행하셨다면 <b>features-RLS-롤백.sql</b>을 실행해 주세요.<br>· Supabase 프로젝트가 <b>일시정지</b> 상태면 대시보드에서 재개(Resume)하세요.<br>그 후 새로고침하면 정상화됩니다.';
+}
+function showPanel(p){try{activePanel=p;document.querySelectorAll('.panel').forEach(x=>x.classList.remove('show'));const el=document.getElementById('p-'+p);if(el)el.classList.add('show');document.querySelectorAll('#navtabs button').forEach(b=>b.classList.toggle('active',b.dataset.p===p));renderAll();}catch(e){console.error('패널 렌더 오류',e);shellError(e);}}
 
 /* ============ RENDER ============ */
 function canCounsel(){return me.role==='assistant'||me.role==='master'}
 function renderAll(){if(!me)return;
-  ({home:renderHome,dashboard:renderDashboard,seats:renderSeats,students:renderStudents,meals:renderMeals,counsel:renderCounsel,attendance:renderAttendance,board:renderBoard,staffsched:renderStaffSched,schedule:renderSchedule,register:renderRegister,questions:renderQuestions,contents:renderContents,dm:renderDM,templates:renderTemplates,staff:renderStaff,users:renderUsers,mystatus:renderMyStatus,mytimetable:renderMyTimetable,mygrades:renderMyGrades,mealapply:renderMealApply,mypay:renderMyPay,parenthome:renderParentHome}[activePanel]||(()=>{}))();
-  renderNotif();
+  try{
+    ({home:renderHome,dashboard:renderDashboard,seats:renderSeats,students:renderStudents,meals:renderMeals,counsel:renderCounsel,attendance:renderAttendance,board:renderBoard,staffsched:renderStaffSched,schedule:renderSchedule,register:renderRegister,questions:renderQuestions,contents:renderContents,dm:renderDM,templates:renderTemplates,staff:renderStaff,users:renderUsers,mystatus:renderMyStatus,mytimetable:renderMyTimetable,mygrades:renderMyGrades,mealapply:renderMealApply,mypay:renderMyPay,parenthome:renderParentHome}[activePanel]||(()=>{}))();
+  }catch(e){console.error('패널 렌더 오류('+activePanel+')',e);shellError(e);}
+  try{renderNotif();}catch(e){console.error('알림 렌더 오류',e);}
 }
 function notifSeenTs(){try{return +store.getItem('ce_notif_seen')||0}catch(e){return 0}}
 function buildNotifs(){
