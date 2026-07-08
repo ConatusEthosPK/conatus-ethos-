@@ -505,7 +505,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 관리자만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v112 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v113 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -983,6 +983,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+/* ============ 전역 오류 표시 (진단용) ============ */
+function showFatal(msg){try{var d=document.getElementById('fatal-banner');if(!d){d=document.createElement('div');d.id='fatal-banner';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d);}d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#b00020;color:#fff;font:600 13px/1.5 -apple-system,sans-serif;padding:10px 40px 10px 14px;white-space:pre-wrap;box-shadow:0 2px 10px rgba(0,0,0,.4);cursor:pointer';d.textContent='⚠️ 오류(탭하면 닫힘): '+msg;}catch(_){}}
+window.addEventListener('error',function(e){showFatal((e.message||'error')+'  @ '+((e.filename||'').split('/').pop())+':'+(e.lineno||'')+':'+(e.colno||''));});
+window.addEventListener('unhandledrejection',function(e){var r=e.reason;showFatal('promise: '+((r&&(r.message||r.error_description||r.msg))||JSON.stringify(r)||r));});
 /* ============ Supabase 클라이언트 ============ */
 const SB_URL="https://hsmwlrshsvyakxirihwn.supabase.co";
 const SB_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzbXdscnNoc3Z5YWt4aXJpaHduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NzQ5OTksImV4cCI6MjA5NzQ1MDk5OX0.0uJOZn5cSR3DG-G0MDV8lHxy8fojwB6rf26Pzix6UhA";
@@ -1422,6 +1426,7 @@ function buildShell(){
   }catch(e){console.error('화면 구성 오류',e);shellError(e);}
 }
 function shellError(e){
+  try{showFatal('화면 렌더 실패 · '+((e&&e.message)||e));}catch(_){}
   const box=document.querySelector('.container')||document.getElementById('app');if(!box)return;
   let d=document.getElementById('shell-error');if(!d){d=document.createElement('div');d.id='shell-error';box.prepend(d);}
   d.style.cssText='margin:20px;padding:16px 18px;border:1px solid var(--warn);border-radius:12px;background:var(--warn-soft);color:var(--ink);font-size:14px;line-height:1.6';
