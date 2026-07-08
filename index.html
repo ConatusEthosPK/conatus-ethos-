@@ -505,7 +505,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 관리자만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v116 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v117 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -1302,13 +1302,12 @@ function genSeatsLayout(){
 async function loadSeats(){
   if(!sb)return;
   try{
-    let res=await sb.from('seats').select('*');let data=res.data;
-    if((!data||data.length===0)&&me&&me.real&&(me.role==='master'||me.role==='director'||me.role==='counter')){
-      const rows=genSeatsLayout().map(s=>({id:s.id,label:s.label,zone:s.zone,kan:s.kan,occupant_name:s.name||null,student_id:s.sid||null,grade:s.grade||null,gender:s.gender||null,bookable:!!s.bookable,present:s.present,flag:s.flag||null}));
-      await sb.from('seats').insert(rows);
-      res=await sb.from('seats').select('*');data=res.data;
+    const res=await sb.from('seats').select('*');const data=res.data;
+    // ⚠️ 조회가 비어도 DB에 기본배치를 자동으로 쓰지 않음(커스텀 배치 덮어쓰기 방지).
+    //    비어 있으면 화면은 로컬 fallback(genSeatsLayout)으로만 보여주고, DB는 건드리지 않는다.
+    if(data&&data.length){
+      DB.seats=data.map(s=>({id:s.id,label:s.label,zone:s.zone,kan:s.kan,name:s.occupant_name||'',grade:s.grade||'',gender:s.gender||'m',sid:s.student_id,bookable:!!s.bookable,present:s.present,flag:s.flag}));
     }
-    if(data)DB.seats=data.map(s=>({id:s.id,label:s.label,zone:s.zone,kan:s.kan,name:s.occupant_name||'',grade:s.grade||'',gender:s.gender||'m',sid:s.student_id,bookable:!!s.bookable,present:s.present,flag:s.flag}));
   }catch(e){console.error('좌석 로딩 실패',e);}
 }
 async function refreshSeats(){await loadSeats();if(activePanel==='seats')renderSeats();}
