@@ -505,7 +505,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 관리자만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v110 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v111 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -1208,10 +1208,11 @@ async function enterReal(user){
   let prof=null;
   try{const {data}=await sb.from('profiles').select('*').eq('id',user.id).single();prof=data;}catch(e){console.error('프로필 로딩 실패',e);}
   const u={id:user.id,email:user.email,name:(prof&&prof.name)||user.email,role:(prof&&prof.role)||'student',sid:(prof&&prof.student_id)||null,real:true};
-  await Promise.all([loadBoard(),loadShifts(),loadTemplates(),loadStudents(),loadAttendance(),loadMeals(),loadUsers(),loadDMs(),loadQuestions(),loadContents(),loadPatrols(),loadSeatEvents(),loadReservations(),loadGroup(),loadChatGroups(),loadStaffMeals(),loadStaffAttend(),loadTimetables(user.id)]);
-  await loadSeats();          // 좌석은 학생 로딩 이후
-  enter(u);
-  subscribeRealtime();        // 실시간 변경 구독
+  // 데이터 로딩이 일부 실패(RLS/네트워크 등)해도 로그인 자체는 되도록 방어
+  try{await Promise.all([loadBoard(),loadShifts(),loadTemplates(),loadStudents(),loadAttendance(),loadMeals(),loadUsers(),loadDMs(),loadQuestions(),loadContents(),loadPatrols(),loadSeatEvents(),loadReservations(),loadGroup(),loadChatGroups(),loadStaffMeals(),loadStaffAttend(),loadTimetables(user.id)]);}catch(e){console.error('데이터 일부 로딩 실패(로그인은 계속 진행)',e);}
+  try{await loadSeats();}catch(e){console.error('좌석 로딩 실패',e);}
+  try{enter(u);}catch(e){console.error('화면 구성 오류',e);document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';}
+  try{subscribeRealtime();}catch(e){console.error('실시간 구독 실패',e);}
 }
 async function loadDMs(){if(!sb)return;try{const {data}=await sb.from('dms').select('*');if(data)DB.dms=data.map(d=>({id:d.id,from:d.from_id,to:d.to_id,text:d.body||'',ts:new Date(d.created_at).getTime()}));}catch(e){console.error('DM 로딩 실패',e);}}
 async function loadQuestions(){if(!sb)return;try{const {data}=await sb.from('questions').select('*').order('created_at',{ascending:false});if(data)DB.questions=data.map(q=>({id:q.id,sid:q.student_id,student:q.student_name||'',subject:q.subject||'',seat:q.seat||'',desiredTime:q.desired_time||'',text:q.body||'',photo:q.photo||null,status:q.status||'대기',answer:q.answer||'',teacher:q.teacher||'',ts:new Date(q.created_at).getTime()}));}catch(e){console.error('질문 로딩 실패',e);}}
