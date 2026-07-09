@@ -514,7 +514,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 관리자만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v120 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v121 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -2835,7 +2835,15 @@ function pkExportSlips(){
 /* ===== ② 답지·배점 ===== */
 function pkKeysHTML(ex){
   const units=pkAllUnits();
-  return `<div class="card no-print" style="margin-bottom:10px">
+  return `<div class="card no-print" style="margin-bottom:10px;background:var(--brand-soft);border:0">
+    <div style="font-size:13px;font-weight:700;margin-bottom:6px">📥 답지 파일 자동 인식 (엑셀)</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">시트별(국어·수학·영어·한국사·탐구), 섹션별(공통·화작·언매·확통·미적분·기하…), <b>번호·정답·배점</b> 형식의 엑셀을 올리면 문항별로 자동 배치됩니다. 동그라미 정답(①~⑤)과 단답형 숫자 모두 인식해요.</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input class="in" type="file" id="pk-key-file" accept=".xlsx,.xls,.csv" style="max-width:300px">
+      <button class="btn primary sm" onclick="pkImportKeys()">자동 인식·배치</button>
+    </div>
+  </div>
+  <div class="card no-print" style="margin-bottom:10px">
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span style="font-weight:700;font-size:14px">채점 단위</span>
       <select class="in" style="max-width:320px" onchange="pkSetKeyUnit(this.value)">${units.map(u=>`<option value="${u.u}" ${u.u===pkKeyUnit?'selected':''}>${u.label}</option>`).join('')}</select>
@@ -2864,6 +2872,37 @@ function pkSetKey(u,q,field,el){const ex=pkCur();if(!ex)return;const k=pkKeyObj(
   if(field==='pts')pkRenderKeyGrid();   // 배점 합계 갱신 (onchange는 blur 후라 포커스 영향 없음)
 }
 function pkFillPts(v){const ex=pkCur();if(!ex)return;const def=pkUnitDef(pkKeyUnit);if(!def)return;const k=pkKeyObj(ex,pkKeyUnit);for(let q=def.from;q<=def.to;q++)k.pts[q]=v;save();pkRenderKeyGrid();toast('✅ 배점','일괄 '+v+'점 적용','var(--brand)');}
+/* 답지 정답 셀 → 문자열 정답 (동그라미 숫자 ①~⑨ → "1"~"9", 단답형 숫자는 그대로) */
+function pkAnsCell(v){if(v==null)return '';let s=String(v).trim();if(s.length===1){const c=s.charCodeAt(0);if(c>=0x2460&&c<=0x2468)return String(c-0x2460+1);}return s;}
+function pkUnitFromSection(subject,t){t=String(t||'');
+  if(subject==='국어'){if(/화법|화작/.test(t))return'국어_화작';if(/언어와\s*매체|언매/.test(t))return'국어_언매';if(/공통/.test(t))return'국어_공통';return null;}
+  if(subject==='수학'){if(/확률|확통/.test(t))return'수학_확통';if(/미적/.test(t))return'수학_미적분';if(/기하/.test(t))return'수학_기하';if(/공통/.test(t))return'수학_공통';return null;}
+  if(subject==='영어')return'영어';
+  if(subject==='한국사')return'한국사';
+  if([...TAMGU_SOC,...TAMGU_SCI].includes(subject))return'탐구_'+subject;
+  return null;
+}
+async function pkImportKeys(){
+  const ex=pkCur();if(!ex){toast('ℹ️ 시험 없음','먼저 시험을 만들어주세요.','var(--out)');return;}
+  const inp=document.getElementById('pk-key-file');const f=inp&&inp.files&&inp.files[0];
+  if(!f){toast('⚠️ 파일 없음','답지 엑셀 파일을 선택하세요.','var(--warn)');return;}
+  if(typeof XLSX==='undefined'){toast('⚠️ 준비중','엑셀 모듈 로딩 중이에요. 잠시 후 다시.','var(--warn)');return;}
+  try{
+    const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});
+    let items=0;const touched={};
+    wb.SheetNames.forEach(sn=>{const subject=String(sn).trim();const ws=wb.Sheets[sn];const aoa=XLSX.utils.sheet_to_json(ws,{header:1,raw:true});let curUnit=null;
+      aoa.forEach(row=>{const a=(row[0]==null?'':row[0]),b=(row.length>1?row[1]:null),c=(row.length>2?row[2]:null);const aStr=String(a).trim();
+        if(aStr&&(b==null||String(b).trim()==='')){ // 섹션/제목 행
+          if(/합계/.test(aStr))return;const u=pkUnitFromSection(subject,aStr);if(u)curUnit=u;return;}
+        const q=parseInt(aStr,10);if(!isNaN(q)&&curUnit&&b!=null&&String(b).trim()!=='정답'){const ans=pkAnsCell(b);if(!ans)return;const k=pkKeyObj(ex,curUnit);k.ans[q]=ans;if(c!=null&&String(c).trim()!=='')k.pts[q]=Number(c)||0;touched[curUnit]=true;items++;}
+      });
+    });
+    const nu=Object.keys(touched).length;
+    if(!items){toast('🤔 인식 실패','형식을 확인하세요. (시트=과목, 열: 번호·정답·배점)','var(--warn)');return;}
+    save();renderPkexam();
+    toast('📥 답지 인식 완료',`${items}문항 자동 배치 (단위 ${nu}개). ②탭에서 확인하세요.`,'var(--brand)');
+  }catch(e){toast('❌ 인식 실패',String(e&&e.message||e),'var(--warn)');}
+}
 
 /* ===== ③ OMR 판독 파이프라인 ===== */
 function pkUnitsFor(ex,sid,subjKey){const r=pkRes(ex,sid);const sel=r.sel||{};
