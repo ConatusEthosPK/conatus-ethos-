@@ -514,7 +514,7 @@
       <button type="button" id="btn-signup" class="btn primary" style="width:100%" onclick="doSignup()">학생으로 가입</button>
       <div class="demo-note">가입 시 기본 등급은 <b>학생</b>. 원장·조교·카운터 권한은 관리자만 부여합니다.</div>
     </div>
-    <div class="demo-accts"><div class="lab">데모(미리보기) · v121 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
+    <div class="demo-accts"><div class="lab">데모(미리보기) · v122 — 실제 로그인은 위 이메일/비밀번호</div><div class="demo-grid" id="demo-grid"></div></div>
   </div>
 </div>
 
@@ -1005,6 +1005,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 /* ============ 전역 오류 표시 (진단용) ============ */
 function showFatal(msg){try{var d=document.getElementById('fatal-banner');if(!d){d=document.createElement('div');d.id='fatal-banner';d.onclick=function(){d.remove()};(document.body||document.documentElement).appendChild(d);}d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#b00020;color:#fff;font:600 13px/1.5 -apple-system,sans-serif;padding:10px 40px 10px 14px;white-space:pre-wrap;box-shadow:0 2px 10px rgba(0,0,0,.4);cursor:pointer';d.textContent='⚠️ 안내(탭하면 닫힘): '+msg;}catch(_){}}
@@ -2711,7 +2712,7 @@ function printSchedule(){
 /* ============ PK시험 (모의고사 성적) ============ */
 if(!DB.pkExams)DB.pkExams=[];
 let pkCurId=(DB.pkExams[0]&&DB.pkExams[0].id)||null;
-let pkTab='score';let pkKeyUnit='국어_공통';let pkOmrSubj='kor';
+let pkTab='score';let pkKeyUnit='국어_공통';let pkOmrSubj='';
 // 채점 단위(답지) 정의 — 과목·선택별
 const PK_UNITS_BASE=[
   {u:'국어_공통',label:'국어 공통 (1~34)',from:1,to:34,short:[]},
@@ -2925,32 +2926,57 @@ function pkExpected(ex,sid,subjKey){const units=pkUnitsFor(ex,sid,subjKey).filte
 function pkAnswered(omr,ex,sid,subjKey){if(!omr||!omr.answers)return 0;const units=pkUnitsFor(ex,sid,subjKey).filter(Boolean);let n=0;units.forEach(u=>{const d=pkUnitDef(u);if(!d)return;for(let q=d.from;q<=d.to;q++){const v=omr.answers[q];if(v!=null&&v!=='')n++;}});return n;}
 function pkNorm(s){return String(s||'').replace(/\s/g,'').trim();}
 function pkMatchName(name){const nm=pkNorm(name);if(!nm)return null;const staff=staffStudentIds();const cand=DB.students.filter(s=>s.status!=='withdrawn'&&!staff.has(String(s.id)));let hit=cand.filter(s=>pkNorm(s.name)===nm);if(hit.length===1)return hit[0].id;return null;}
+function pkSubjFromDetected(det){const t=String(det||'');if(/국어/.test(t))return'kor';if(/수학/.test(t))return'mat';if(/영어/.test(t))return'eng';if(/한국사/.test(t))return'his';return null;}
+function pkTrimCanvas(cv){try{const ctx=cv.getContext('2d');const W=cv.width,H=cv.height;const d=ctx.getImageData(0,0,W,H).data;let minX=W,minY=H,maxX=0,maxY=0;const step=4,th=225;for(let y=0;y<H;y+=step){for(let x=0;x<W;x+=step){const i=(y*W+x)*4;const lum=(d[i]+d[i+1]+d[i+2])/3;if(lum<th){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}}}if(maxX<=minX||maxY<=minY)return cv;const pad=24;minX=Math.max(0,minX-pad);minY=Math.max(0,minY-pad);maxX=Math.min(W,maxX+pad);maxY=Math.min(H,maxY+pad);const w=maxX-minX,h=maxY-minY;const out=document.createElement('canvas');out.width=w;out.height=h;out.getContext('2d').drawImage(cv,minX,minY,w,h,0,0,w,h);return out;}catch(e){return cv;}}
+async function pdfToImages(file,st){
+  if(typeof pdfjsLib==='undefined')throw new Error('PDF 모듈이 아직 로딩 중이에요(새로고침 후 재시도)');
+  if(pdfjsLib.GlobalWorkerOptions&&!pdfjsLib.GlobalWorkerOptions.workerSrc)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const buf=await file.arrayBuffer();const pdf=await pdfjsLib.getDocument({data:buf}).promise;const out=[];
+  for(let i=1;i<=pdf.numPages;i++){
+    if(st)st.textContent=`PDF 변환 중… ${i}/${pdf.numPages}`;
+    const page=await pdf.getPage(i);const vp=page.getViewport({scale:2});
+    const cv=document.createElement('canvas');cv.width=Math.round(vp.width);cv.height=Math.round(vp.height);
+    const ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height);
+    await page.render({canvasContext:ctx,viewport:vp}).promise;
+    out.push(pkTrimCanvas(cv).toDataURL('image/jpeg',0.82));
+  }
+  return out;
+}
 async function pkOmrRun(){
   const ex=pkCur();if(!ex)return;
   if(!(sb&&me&&me.real)){toast('ℹ️ 서버 필요','OMR 자동판독은 실제 로그인(서버 연결) 상태에서 동작해요.','var(--out)');return;}
   const inp=document.getElementById('pk-omr-file');const files=inp&&inp.files?[...inp.files]:[];
-  if(!files.length){toast('⚠️ 파일 없음','OMR 이미지를 선택하세요.','var(--warn)');return;}
-  const subjKey=pkOmrSubj;const subjLabel=(PK_SUBJ.find(s=>s.key===subjKey)||{}).label||'';
+  if(!files.length){toast('⚠️ 파일 없음','OMR PDF 또는 이미지를 선택하세요.','var(--warn)');return;}
   ex.omr=ex.omr||{};ex.omrPending=ex.omrPending||[];
-  const st=document.getElementById('pk-omr-status');let done=0,ok=0,unm=0;
+  const st=document.getElementById('pk-omr-status');
+  // 1) 이미지 목록 만들기 (PDF는 페이지별로 변환)
+  let imgs=[];
   for(const f of files){
-    if(st)st.textContent=`판독 중… ${done}/${files.length}`;
-    if(!/^image\//.test(f.type)){ex.omrPending.push({subjKey,read:{name:'',answers:{},error:'이미지 파일이 아님('+f.name+')'}});done++;continue;}
-    let dataURL=null;try{dataURL=await pkFileToDataURL(f);}catch(e){}
-    if(!dataURL){done++;continue;}
+    if(/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)){
+      try{const pages=await pdfToImages(f,st);pages.forEach((du,idx)=>imgs.push({dataURL:du,name:f.name+' p'+(idx+1)}));}
+      catch(e){toast('❌ PDF 변환 실패',String(e&&e.message||e),'var(--warn)');}
+    }else if(/^image\//.test(f.type)){const du=await pkFileToDataURL(f);if(du)imgs.push({dataURL:du,name:f.name});}
+  }
+  if(!imgs.length){toast('⚠️ 변환 실패','판독할 페이지가 없습니다. (PDF/이미지 확인)','var(--warn)');return;}
+  // 2) 페이지별 AI 판독
+  let done=0,ok=0,unm=0;
+  for(const im of imgs){
+    if(st)st.textContent=`판독 중… ${done}/${imgs.length} (매칭 ${ok})`;
     let data=null,err=null;
-    try{const res=await sb.functions.invoke('omr-read',{body:{image:dataURL,subject:subjLabel,hint:'문항 및 단답형은 과목 표준을 따름'}});
+    try{const res=await sb.functions.invoke('omr-read',{body:{image:im.dataURL,hint:'상단 "○교시 ○○영역" 표기를 읽어 과목(subject)도 함께 판단'}});
       if(res.error)err=res.error.message||'함수 오류';else if(res.data&&res.data.error)err=res.data.error;else data=res.data&&res.data.data;
     }catch(e){err=String(e&&e.message||e);}
-    if(!data){ex.omrPending.push({subjKey,read:{name:'',answers:{},error:err||'판독 실패'}});done++;continue;}
-    const read={name:data.name||'',form:data.form||'',select:data.select||'',answers:data.answers||{},ts:Date.now(),file:f.name};
+    if(!data){ex.omrPending.push({subjKey:pkOmrSubj||'kor',read:{name:'',answers:{},error:(err||'판독 실패')+' · '+im.name}});done++;continue;}
+    const subjKey=pkSubjFromDetected(data.subject)||pkOmrSubj;
+    const read={name:data.name||'',form:data.form||'',select:data.select||'',subject:data.subject||'',answers:data.answers||{},ts:Date.now(),file:im.name};
+    if(!subjKey){ex.omrPending.push({subjKey:'kor',read:Object.assign(read,{error:'과목 자동인식 실패 — 수동 지정 필요 · '+im.name})});done++;continue;}
     const sid=pkMatchName(read.name);
     if(sid){ex.omr[sid]=ex.omr[sid]||{};ex.omr[sid][subjKey]=read;pkApplyOmr(ex,sid,subjKey);ok++;}
     else{ex.omrPending.push({subjKey,read});unm++;}
     done++;
   }
-  save();if(st)st.textContent=`완료: 매칭 ${ok}명 · 미매칭 ${unm}건`;
-  toast('🧾 판독 완료',`${ok}명 자동 채점, 미매칭 ${unm}건 (검토 필요)`,ok?'var(--brand)':'var(--out)');
+  save();if(st)st.textContent=`완료: 매칭 ${ok}건 · 미매칭 ${unm}건`;
+  toast('🧾 판독 완료',`${ok}건 자동 채점, 미매칭 ${unm}건 (아래에서 검토)`,ok?'var(--brand)':'var(--out)');
   pkRenderReview();
 }
 function pkFileToDataURL(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsDataURL(f);});}
@@ -2968,10 +2994,10 @@ function pkFlags(ex,sid,subjKey){const omr=ex.omr[sid]&&ex.omr[sid][subjKey];con
 }
 function pkOmrHTML(ex){
   return `<div class="card no-print" style="margin-bottom:10px">
-    <div style="font-size:13px;color:var(--muted);margin-bottom:8px">과목을 고르고 그 과목 OMR 이미지들을 올린 뒤 <b>판독 시작</b>을 누르면, AI가 읽어 답지와 대조 채점하고 <b>이름으로 원생을 자동 매칭</b>합니다. 결과는 아래에서 검토·수정하세요. <span style="color:var(--out)">반듯하게 스캔한 이미지(jpg/png)일수록 정확해요.</span></div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px"><b>PDF(스캔) 또는 이미지</b>를 올리고 <b>판독 시작</b>을 누르면, AI가 각 장을 읽어 <b>과목을 자동 인식</b>하고 답지와 대조 채점, <b>이름으로 원생을 자동 매칭</b>합니다. (여러 과목이 섞인 PDF도 OK) 결과는 아래에서 검토·수정하세요. <span style="color:var(--out)">반듯하게 스캔할수록 정확해요.</span></div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <select class="in" style="max-width:160px" onchange="pkOmrSubj=this.value">${PK_SUBJ.map(s=>`<option value="${s.key}" ${s.key===pkOmrSubj?'selected':''}>${s.label}</option>`).join('')}</select>
-      <input class="in" type="file" id="pk-omr-file" accept="image/*" multiple style="max-width:280px">
+      <select class="in" style="max-width:170px" onchange="pkOmrSubj=this.value" title="자동 인식 실패 시 사용할 과목"><option value="">과목 자동인식</option>${PK_SUBJ.map(s=>`<option value="${s.key}" ${s.key===pkOmrSubj?'selected':''}>${s.label} (수동)</option>`).join('')}</select>
+      <input class="in" type="file" id="pk-omr-file" accept="image/*,application/pdf,.pdf" multiple style="max-width:280px">
       <button class="btn primary sm" onclick="pkOmrRun()">판독 시작</button>
       <span id="pk-omr-status" style="font-size:12px;color:var(--muted)"></span>
     </div>
